@@ -165,9 +165,30 @@ jobs:
           bt=("${ANDROID_SDK_ROOT:-$ANDROID_HOME}"/build-tools/*)
           [ ${#bt[@]} -gt 0 ] || { echo "::error::No build-tools found"; exit 1; }
           BT="$(printf '%s\n' "${bt[@]}" | sort -V | tail -1)"
+          # `apksigner verify` exits non-zero when the APK is not properly signed.
+          # --print-certs only prints certificate details (it does not print the
+          # "Verified using v1/v2 scheme" lines), so compare the output digest
+          # against the digest read out of the keystore itself.
           "$BT/apksigner" verify --print-certs "$APK" | tee "$RUNNER_TEMP/apksigner.txt"
-          grep -qi 'verified using v[0-9]' "$RUNNER_TEMP/apksigner.txt" \
-            || { echo "::error::APK signature did not verify"; exit 1; }
+
+          set -a
+          . "$RUNNER_TEMP/signing.env"
+          set +a
+
+          KT_OUT="$(keytool -list -v -keystore "$STRYKER_RELEASE_STORE_FILE" \
+                      -storepass "$STRYKER_RELEASE_STORE_PASSWORD" \
+                      -alias "$STRYKER_RELEASE_KEY_ALIAS" 2>/dev/null || true)"
+          EXPECTED="$(printf '%s\n' "$KT_OUT" | sed -n 's/^[[:space:]]*SHA-*256: //p' \
+                      | tr -d ':' | tr 'A-Z' 'a-z' | sed -n '1p')"
+          ACTUAL="$(sed -n 's/.*certificate SHA-256 digest: //p' "$RUNNER_TEMP/apksigner.txt" \
+                      | tr -d ':' | tr 'A-Z' 'a-z' | sed -n '1p')"
+
+          [ -n "$EXPECTED" ] || { echo "::error::Could not read the certificate digest from the keystore"; exit 1; }
+          [ -n "$ACTUAL" ] || { echo "::error::apksigner reported no signing certificate"; exit 1; }
+          [ "$ACTUAL" = "$EXPECTED" ] \
+            || { echo "::error::APK is signed by $ACTUAL but the keystore expects $EXPECTED"; exit 1; }
+
+          echo "APK signing verified - signed with the expected key ($ACTUAL)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Collect APKs
         run: |
