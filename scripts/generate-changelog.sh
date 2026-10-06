@@ -121,7 +121,9 @@ done < "$WORK/commits.tsv"
     echo
   fi
 
-  CONTRIBUTORS="$(sort -u "$WORK/authors" 2>/dev/null | grep -v '^$' | paste -sd ', ' - || true)"
+  # `paste -d ', '` cycles through the delimiters, which drops the spaces, so
+  # join with a plain comma and add the spaces afterwards.
+  CONTRIBUTORS="$(sort -u "$WORK/authors" 2>/dev/null | grep -v '^$' | paste -sd',' - | sed 's/,/, /g' || true)"
   if [ -n "$CONTRIBUTORS" ]; then
     echo "### 👥 Contributors"
     echo
