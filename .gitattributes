@@ -13,3 +13,6 @@
 *.jar   binary
 *.so    binary
 *.keystore binary
+*.jks   binary
+*.p12   binary
+*.pfx   binary

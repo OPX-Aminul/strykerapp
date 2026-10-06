@@ -1,10 +1,13 @@
 name: Android CI
 
+# Pull-request validation only. Nothing runs on push: releases are published
+# manually from .github/workflows/release.yml (Actions -> Run workflow), so this
+# workflow stays off the push trigger to avoid running the heavy NDK build on
+# every commit.
 on:
-  push:
-    branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
