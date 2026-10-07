@@ -1,0 +1,719 @@
+
+live log 
+
+[INFO] Stryker 6.5.2 · build 652
+[INFO] Plan: User Mode Linux → Rootless VM (QEMU) · an engine counts as working only once the guest answers over SSH
+[STEP] Installing User Mode Linux
+[INFO] Artifacts not bundled — downloading (~500 MB)
+[STEP] No bundled artifacts — fetching the engine from the release
+[STEP] UML engine: the kernel ships in the app, only the disk image is needed
+[STEP] GET https://github.com/OPX-Aminul/strykerapp/releases/download/rootless-650/rootfs.imgz
+[SUCCESS] rootfs ready (306.8 MB)
+[STEP] Decompressing rootfs (this can take a minute)
+[SUCCESS] rootfs.img ready (1532.1 MB)
+[SUCCESS] VM disk starts at 8 GB and grows into free storage automatically
+[SUCCESS] User Mode Linux installed
+[STEP] Fetching the virtual machine as a fallback
+[STEP] No bundled artifacts — fetching the engine from the release
+[STEP] GET https://github.com/OPX-Aminul/strykerapp/releases/download/rootless-650/Image
+[SUCCESS] kernel ready (27.3 MB)
+[STEP] GET https://github.com/OPX-Aminul/strykerapp/releases/download/rootless-650/initrd.img
+[SUCCESS] initrd ready (15.6 MB)
+[STEP] Debian image already present — keeping it
+[SUCCESS] Rootless VM (QEMU) installed
+[SUCCESS] Fallback engine ready if this one will not boot
+[SUCCESS] Defaults written (wlan0, 4 vCPU, 4096 MB)
+[STEP] Booting User Mode Linux for the first time · waiting for the guest's SSH
+[INFO] Kernel probe said:
+[INFO]   Checking environment variables for a tempdir.../data/user/0/com.zalexdev.stryker/files/uml/tmp
+[INFO]   Checking if /data/user/0/com.zalexdev.stryker/files/uml/tmp is on tmpfs...no
+[INFO]   Warning: tempdir /data/user/0/com.zalexdev.stryker/files/uml/tmp is not on tmpfs
+[INFO]   Checking PROT_EXEC mmap in /data/user/0/com.zalexdev.stryker/files/uml/tmp...OK
+[INFO]   Checking close_range()...blocked by the host (signal 31); closing by hand
+[INFO]   Checking the stub's cycle counter...OK
+[INFO]   Checking that seccomp filters can be installed...OK
+[INFO]   Userspace mode: SECCOMP
+[INFO]   Checking that host ptys support output SIGIO...Yes
+[INFO]   Checking host MADV_REMOVE support...
+[WARN] Boot: the guest exited (159): MADV_REMOVE failed, err = -95
+  Checking environment variables for a tempdir.../data/user/0/com.zalexdev.stryker/files/uml/tmp
+  Warning: tempdir /data/user/0/com.zalexdev.stryker/files/uml/tmp is not on tmpfs
+  Checking that seccomp filters can be installed...OK
+  Userspace mode: SECCOMP — the kernel backs guest memory with a file in /data/user/0/com.zalexdev.stryker/files/uml/tmp, which is on ext4 rather than tmpfs, and only tmpfs supports MADV_REMOVE. This device gives apps no writable tmpfs, so UML cannot run here; the QEMU engine does not need it.
+[ERROR] User Mode Linux did not boot: the guest exited (159): MADV_REMOVE failed, err = -95
+  Checking environment variables for a tempdir.../data/user/0/com.zalexdev.stryker/files/uml/tmp
+  Warning: tempdir /data/user/0/com.zalexdev.stryker/files/uml/tmp is not on tmpfs
+  Checking that seccomp filters can be installed...OK
+  Userspace mode: SECCOMP — the kernel backs guest memory with a file in /data/user/0/com.zalexdev.stryker/files/uml/tmp, which is on ext4 rather than tmpfs, and only tmpfs supports MADV_REMOVE. This device gives apps no writable tmpfs, so UML cannot run here; the QEMU engine does not need it.
+[WARN] User Mode Linux did not work here. Trying Rootless VM (QEMU).
+[STEP] Installing Rootless VM (QEMU)
+[INFO] Artifacts not bundled — downloading (~500 MB)
+[STEP] No bundled artifacts — fetching the engine from the release
+[STEP] GET https://github.com/OPX-Aminul/strykerapp/releases/download/rootless-650/Image
+[SUCCESS] kernel ready (27.3 MB)
+[STEP] GET https://github.com/OPX-Aminul/strykerapp/releases/download/rootless-650/initrd.img
+[SUCCESS] initrd ready (15.6 MB)
+[STEP] Debian image already present — keeping it
+[SUCCESS] Rootless VM (QEMU) installed
+[SUCCESS] Defaults written (wlan0, 4 vCPU, 4096 MB)
+[STEP] Booting Rootless VM (QEMU) for the first time · waiting for the guest's SSH
+
+
+
+uml console log 
+
+
+passt: SIGSYS on syscall 436
+Address space: host top 0x8000000000, stub at 0x7fffff4000, guest TASK_SIZE 0x7fc0000000
+Core dump limits :
+	soft - 0
+	hard - NONE
+Stub signal stack: 16384 bytes (host publishes no AT_MINSIGSTKSZ)
+Checking environment variables for a tempdir.../data/user/0/com.zalexdev.stryker/files/uml/tmp
+Checking if /data/user/0/com.zalexdev.stryker/files/uml/tmp is on tmpfs...no
+Warning: tempdir /data/user/0/com.zalexdev.stryker/files/uml/tmp is not on tmpfs
+Checking PROT_EXEC mmap in /data/user/0/com.zalexdev.stryker/files/uml/tmp...OK
+Checking close_range()...blocked by the host (signal 31); closing by hand
+Checking the stub's cycle counter...OK
+Checking that seccomp filters can be installed...OK
+Userspace mode: SECCOMP
+Linux version 7.2.0-rc4-g8897487c5223-dirty (stryker@images) (Android (12470979, +pgo, +bolt, +lto, +mlgo, based on r522817c) clang version 18.0.3 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262), LLD 18.0.3) #1 SMP Thu Jan  1 00:00:00 UTC 1970
+random: crng init done
+Zone ranges:
+  Normal   [mem 0x0000000000000000-0x000000015fffffff]
+Movable zone start for each node
+Early memory node ranges
+  node   0: [mem 0x0000000000000000-0x00000000ffffffff]
+Initmem setup node 0 [mem 0x0000000000000000-0x00000000ffffffff]
+percpu: Embedded 5 pages/cpu s31608 r8192 d42120 u81920
+Kernel command line: panic=-1 con=null con0=fd:0,fd:1 ubd0=/data/user/0/com.zalexdev.stryker/files/rootless/rootfs.img root=/dev/ubda rw init=/stryker-init stryker.share=/storage/emulated/0/Stryker firmware_class.path=/host/firmware vec0:transport=fd,fd=3,mac=02:00:00:00:00:01 console=tty0
+printk: log_buf_len individual max cpu contribution: 4096 bytes
+printk: log_buf_len total cpu_extra contributions: 12288 bytes
+printk: log_buf_len min size: 16384 bytes
+printk: log buffer data + meta data: 32768 + 114688 = 147456 bytes
+printk: early log buf free: 15072(91%)
+Dentry cache hash table entries: 524288 (order: 8, 4194304 bytes, linear)
+Inode-cache hash table entries: 262144 (order: 7, 2097152 bytes, linear)
+Built 1 zonelists, mobility grouping on.  Total pages: 262144
+mem auto-init: stack:all(zero), heap alloc:off, heap free:off
+SLUB: HWalign=32, Order=0-3, MinObjects=0, CPUs=4, Nodes=1
+rcu: Hierarchical RCU implementation.
+rcu: 	RCU restricting CPUs from NR_CPUS=16 to nr_cpu_ids=4.
+rcu: RCU calculated value of scheduler-enlistment delay is 10 jiffies.
+rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=4
+NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 64
+rcu: srcu_init: Setting srcu_struct sizes based on contention.
+clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+clocksource: timer: mask: 0xffffffffffffffff max_cycles: 0x1cd42e205, max_idle_ns: 881590404426 ns
+Calibrating delay loop... 2524.77 BogoMIPS (lpj=12623872)
+Checking that host ptys support output SIGIO...Yes
+pid_max: default: 32768 minimum: 301
+Mount-cache hash table entries: 8192 (order: 2, 65536 bytes, linear)
+Mountpoint-cache hash table entries: 8192 (order: 2, 65536 bytes, linear)
+VFS: Finished mounting rootfs on nullfs
+arm64: hwcap host 0x7ff/0x0 -> guest 0x7ff/0x0 (masked out 0x0/0x0)
+rcu: Hierarchical SRCU implementation.
+rcu: 	Max phase no-delay instances is 1000.
+Timer migration: 1 hierarchy levels; 8 children per group; 1 crossnode level
+smp: Bringing up secondary CPUs ...
+smp: Brought up 1 node, 4 CPUs
+Memory: 4146128K/4194304K available (8946K kernel code, 2132K rwdata, 6064K rodata, 218K init, 1398K bss, 41952K reserved, 0K cma-reserved)
+devtmpfs: initialized
+make_uml_dir: no value in environment for $HOME
+Failed to initialize umid "", trying with a random umid
+posixtimers hash table entries: 2048 (order: 1, 32768 bytes, linear)
+futex hash table entries: 1024 (32768 bytes on 1 NUMA nodes, total 32 KiB, linear).
+NET: Registered PF_NETLINK/PF_ROUTE protocol family
+usbcore: registered new interface driver usbfs
+usbcore: registered new interface driver hub
+usbcore: registered new device driver usb
+pps_core: LinuxPPS API ver. 1 registered
+pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+PTP clock support registered
+clocksource: Switched to clocksource timer
+VFS: Disk quotas dquot_6.6.0
+VFS: Dquot-cache hash table entries: 2048 (16384 bytes)
+NET: Registered PF_INET protocol family
+IP idents hash table entries: 65536 (order: 5, 524288 bytes, linear)
+tcp_listen_portaddr_hash hash table entries: 2048 (order: 1, 32768 bytes, linear)
+Table-perturb hash table entries: 65536 (order: 4, 262144 bytes, linear)
+TCP established hash table entries: 32768 (order: 4, 262144 bytes, linear)
+TCP bind hash table entries: 32768 (order: 6, 1048576 bytes, linear)
+TCP: Hash tables configured (established 32768 bind 32768)
+UDP hash table entries: 2048 (order: 3, 131072 bytes, linear)
+NET: Registered PF_UNIX/PF_LOCAL protocol family
+printk: legacy console [stderr0] disabled
+Checking host MADV_REMOVE support...
+MADV_REMOVE failed, err = -95
+Can't release memory to the host - memory hotplug won't be supported
+Initialise system trusted keyrings
+workingset: timestamp_bits=46 (anon: 41) max_order=18 bucket_order=0 (anon: 0)
+squashfs: version 4.0 (2009/01/31) Phillip Lougher
+fuse: init (API version 7.45)
+NET: Registered PF_ALG protocol family
+Key type asymmetric registered
+Asymmetric key parser 'x509' registered
+io scheduler mq-deadline registered
+io scheduler kyber registered
+io scheduler bfq registered
+loop: module loaded
+tun: Universal TUN/TAP device driver, 1.6
+PPP generic driver version 2.4.2
+SLIP: version 0.8.4-NET3.019-NEWTTY (dynamic channels, max=256).
+usbcore: registered new interface driver ath9k_htc
+usbcore: registered new interface driver carl9170
+usbcore: registered new interface driver ar5523
+usbcore: registered new interface driver p54usb
+usbcore: registered new interface driver mt7601u
+usbcore: registered new interface driver mt76x0u
+usbcore: registered new interface driver mt76x2u
+usbcore: registered new interface driver mt7663u
+usbcore: registered new interface driver mt7921u
+usbcore: registered new interface driver mt7925u
+usbcore: registered new interface driver rt2500usb
+usbcore: registered new interface driver rt73usb
+usbcore: registered new interface driver rt2800usb
+usbcore: registered new interface driver rtl8187
+usbcore: registered new interface driver rtl8192cu
+usbcore: registered new interface driver rtl8192du
+usbcore: registered new interface driver rtl8xxxu
+usbcore: registered new interface driver rtw88_8822bu
+usbcore: registered new interface driver rtw88_8822cu
+usbcore: registered new interface driver rtw88_8723du
+usbcore: registered new interface driver rtw88_8821cu
+usbcore: registered new interface driver rtw88_8821au
+usbcore: registered new interface driver rtw88_8812au
+usbcore: registered new interface driver rtw88_8814au
+usbcore: registered new interface driver rtw89_8851bu
+usbcore: registered new interface driver rtw89_8852au
+usbcore: registered new interface driver rtw89_8852bu
+usbcore: registered new interface driver rtw89_8852cu
+usbcore: registered new interface driver rtw89_8922au
+usbcore: registered new interface driver zd1211rw
+usbcore: registered new interface driver rtl8150
+usbcore: registered new device driver r8152-cfgselector
+usbcore: registered new interface driver r8152
+usbcore: registered new interface driver asix
+usbcore: registered new interface driver ax88179_178a
+usbcore: registered new interface driver cdc_ether
+usbcore: registered new interface driver cdc_eem
+usbcore: registered new interface driver net1080
+usbcore: registered new interface driver rndis_host
+usbcore: registered new interface driver cdc_subset
+usbcore: registered new interface driver zaurus
+usbcore: registered new interface driver cdc_ncm
+usbcore: registered new interface driver r8153_ecm
+vhci_hcd vhci_hcd.0: USB/IP Virtual Host Controller
+vhci_hcd vhci_hcd.0: new USB bus registered, assigned bus number 1
+vhci_hcd vhci_hcd.0: created sysfs vhci_hcd.0
+usb usb1: New USB device found, idVendor=1d6b, idProduct=0002, bcdDevice= 7.02
+usb usb1: New USB device strings: Mfr=3, Product=2, SerialNumber=1
+usb usb1: Product: USB/IP Virtual Host Controller
+usb usb1: Manufacturer: Linux 7.2.0-rc4-g8897487c5223-dirty vhci_hcd
+usb usb1: SerialNumber: vhci_hcd.0
+hub 1-0:1.0: USB hub found
+hub 1-0:1.0: 8 ports detected
+vhci_hcd vhci_hcd.0: USB/IP Virtual Host Controller
+vhci_hcd vhci_hcd.0: new USB bus registered, assigned bus number 2
+usb usb2: We don't know the algorithms for LPM for this host, disabling LPM.
+usb usb2: New USB device found, idVendor=1d6b, idProduct=0003, bcdDevice= 7.02
+usb usb2: New USB device strings: Mfr=3, Product=2, SerialNumber=1
+usb usb2: Product: USB/IP Virtual Host Controller
+usb usb2: Manufacturer: Linux 7.2.0-rc4-g8897487c5223-dirty vhci_hcd
+usb usb2: SerialNumber: vhci_hcd.0
+hub 2-0:1.0: USB hub found
+hub 2-0:1.0: 8 ports detected
+usbcore: registered new interface driver usbhid
+usbhid: USB HID core driver
+NET: Registered PF_INET6 protocol family
+Segment Routing with IPv6
+In-situ OAM (IOAM) with IPv6
+NET: Registered PF_PACKET protocol family
+Initialized stdio console driver
+Console initialized on /dev/tty0
+printk: legacy console [tty0] enabled
+Initializing software serial port version 1
+printk: legacy console [mc-1] enabled
+Loading compiled-in X.509 certificates
+cfg80211: Loading compiled-in X.509 certificates for regulatory database
+Loaded X.509 cert 'sforshee: 00b28ddf47aef9cea7'
+Loaded X.509 cert 'wens: 61c038651aabdcf94bd0ac7ff06c7248db18c600'
+faux_driver regulatory: Direct firmware load for regulatory.db failed with error -2
+cfg80211: failed to load regulatory.db
+EXT4-fs (ubda): recovery complete
+EXT4-fs (ubda): mounted filesystem 3c95ac3d-96a5-4e61-b428-beae8d543e0c r/w with ordered data mode. Quota mode: none.
+VFS: Mounted root (ext4 filesystem) on device 98:0.
+devtmpfs: mounted
+VFS: Pivoted into new rootfs
+Run /stryker-init as init process
+EXT4-fs (ubda): re-mounted 3c95ac3d-96a5-4e61-b428-beae8d543e0c.
+STRYKER_BOOT mounted
+STRYKER_BOOT network
+umnet: kernel killed by signal 31 (Bad system call)
+umnet: passt exited 90
+
+
+
+
+
+
+
+
+
+vm console log 
+
+Loading, please wait...
+Starting systemd-udevd version 257.13-1~deb13u1
+
+Begin: Loading essential drivers ... done.
+Begin: Running /scripts/init-premount ... done.
+Begin: Mounting root file system ... Begin: Running /scripts/local-top ... done.
+Begin: Running /scripts/local-premount ... done.
+Warning: fsck not present, so skipping root file system
+done.
+Begin: Running /scripts/local-bottom ... done.
+Begin: Running /scripts/init-bottom ... done.
+[!p]104[?7h
+[0;1;39mWelcome to [0m[1mDebian GNU/Linux 13 (trixie)[0m[0;1;39m![0m
+
+
+[[0;32m  OK  [0m] Created slice [0;1;39msystem-getty.slice[0m - Slice /system/getty.
+
+[[0;32m  OK  [0m] Created slice [0;1;39msystem-modprobe.slice[0m - Slice /system/modprobe.
+
+[[0;32m  OK  [0m] Created slice [0;1;39msystem-serial\x2dget…slice[0m - Slice /system/serial-getty.
+
+[[0;32m  OK  [0m] Created slice [0;1;39muser.slice[0m - User and Session Slice.
+
+[[0;32m  OK  [0m] Started [0;1;39msystemd-ask-password-conso…[0mequests to Console Directory Watch.
+
+[[0;32m  OK  [0m] Started [0;1;39msystemd-ask-password-wall.…[0md Requests to Wall Directory Watch.
+
+         Expecting device [0;1;39mdev-hvc0.device[0m - /dev/hvc0...
+
+         Expecting device [0;1;39mdev-ttyAMA0.device[0m - /dev/ttyAMA0...
+
+[[0;32m  OK  [0m] Reached target [0;1;39mpaths.target[0m - Path Units.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mremote-fs.target[0m - Remote File Systems.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mslices.target[0m - Slice Units.
+
+[[0;32m  OK  [0m] Reached target [0;1;39msnapd.mounts-pre.target[0m - Mounting snaps.
+
+[[0;32m  OK  [0m] Reached target [0;1;39msnapd.mounts.target[0m - Mounted snaps.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mswap.target[0m - Swaps.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mtime-set.target[0m - System Time Set.
+
+[[0;32m  OK  [0m] Listening on [0;1;39msystemd-creds.socket[0m - Credential Encryption/Decryption.
+
+[[0;32m  OK  [0m] Listening on [0;1;39msystemd-initctl.socke…[0m- initctl Compatibility Named Pipe.
+
+[[0;32m  OK  [0m] Listening on [0;1;39msystemd-journald-dev-…socket[0m - Journal Socket (/dev/log).
+
+[[0;32m  OK  [0m] Listening on [0;1;39msystemd-journald.socket[0m - Journal Sockets.
+
+[[0;32m  OK  [0m] Listening on [0;1;39msystemd-networkd.socket[0m - Network Service Netlink Socket.
+
+[[0;32m  OK  [0m] Listening on [0;1;39msystemd-udevd-control.socket[0m - udev Control Socket.
+
+[[0;32m  OK  [0m] Listening on [0;1;39msystemd-udevd-kernel.socket[0m - udev Kernel Socket.
+
+         Mounting [0;1;39mdev-hugepages.mount[0m - Huge Pages File System...
+
+         Mounting [0;1;39mdev-mqueue.mount[0m - POSIX Message Queue File System...
+
+         Mounting [0;1;39mrun-lock.mount[0m - Legacy Locks Directory /run/lock...
+
+         Mounting [0;1;39msys-kernel-debug.mount[0m - Kernel Debug File System...
+
+         Mounting [0;1;39mtmp.mount[0m - Temporary Directory /tmp...
+
+         Starting [0;1;39mkmod-static-nodes.service[0m…eate List of Static Device Nodes...
+
+         Starting [0;1;39mmodprobe@configfs.service[0m - Load Kernel Module configfs...
+
+         Starting [0;1;39mmodprobe@drm.service[0m - Load Kernel Module drm...
+
+         Starting [0;1;39mmodprobe@efi_pstore.servi…[0m - Load Kernel Module efi_pstore...
+
+         Starting [0;1;39mmodprobe@fuse.service[0m - Load Kernel Module fuse...
+
+         Starting [0;1;39msystemd-journald.service[0m - Journal Service...
+
+         Starting [0;1;39msystemd-modules-load.service[0m - Load Kernel Modules...
+
+         Starting [0;1;39msystemd-network-generator…[0mk Units from Kernel Command Line...
+
+         Starting [0;1;39msystemd-remount-fs.servic…[0munt Root and Kernel File Systems...
+
+         Starting [0;1;39msystemd-udev-load-credent…[0mLoad udev Rules from Credentials...
+
+         Starting [0;1;39msystemd-udev-trigger.service[0m - Coldplug All udev Devices...
+
+[[0;32m  OK  [0m] Mounted [0;1;39mdev-hugepages.mount[0m - Huge Pages File System.
+
+[[0;32m  OK  [0m] Mounted [0;1;39mdev-mqueue.mount[0m - POSIX Message Queue File System.
+
+[[0;32m  OK  [0m] Mounted [0;1;39mrun-lock.mount[0m - Legacy Locks Directory /run/lock.
+
+[[0;32m  OK  [0m] Mounted [0;1;39msys-kernel-debug.mount[0m - Kernel Debug File System.
+
+[[0;32m  OK  [0m] Mounted [0;1;39mtmp.mount[0m - Temporary Directory /tmp.
+
+[[0;32m  OK  [0m] Finished [0;1;39mkmod-static-nodes.service[0m…Create List of Static Device Nodes.
+
+[[0;32m  OK  [0m] Finished [0;1;39mmodprobe@configfs.service[0m - Load Kernel Module configfs.
+
+[[0;32m  OK  [0m] Finished [0;1;39mmodprobe@drm.service[0m - Load Kernel Module drm.
+
+[[0;32m  OK  [0m] Finished [0;1;39mmodprobe@efi_pstore.service[0m - Load Kernel Module efi_pstore.
+
+[[0;32m  OK  [0m] Finished [0;1;39mmodprobe@fuse.service[0m - Load Kernel Module fuse.
+
+[[0;32m  OK  [0m] Finished [0;1;39msystemd-modules-load.service[0m - Load Kernel Modules.
+
+[[0;32m  OK  [0m] Finished [0;1;39msystemd-network-generator…[0mork Units from Kernel Command Line.
+
+[[0;32m  OK  [0m] Finished [0;1;39msystemd-remount-fs.servic…[0mmount Root and Kernel File Systems.
+
+[[0;32m  OK  [0m] Finished [0;1;39msystemd-udev-load-credent…[0m- Load udev Rules from Credentials.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mnetwork-pre.target[0m - Preparation for Network.
+
+         Mounting [0;1;39msys-fs-fuse-connections.mount[0m - FUSE Control File System...
+
+         Mounting [0;1;39msys-kernel-config.mount[0m - Kernel Configuration File System...
+
+         Starting [0;1;39msystemd-random-seed.service[0m - Load/Save OS Random Seed...
+
+         Starting [0;1;39msystemd-sysctl.service[0m - Apply Kernel Variables...
+
+         Starting [0;1;39msystemd-tmpfiles-setup-de…[0m Device Nodes in /dev gracefully...
+
+[[0;32m  OK  [0m] Mounted [0;1;39msys-fs-fuse-connections.mount[0m - FUSE Control File System.
+
+[[0;32m  OK  [0m] Started [0;1;39msystemd-journald.service[0m - Journal Service.
+
+[[0;32m  OK  [0m] Mounted [0;1;39msys-kernel-config.mount[0m - Kernel Configuration File System.
+
+[[0;32m  OK  [0m] Finished [0;1;39msystemd-random-seed.service[0m - Load/Save OS Random Seed.
+
+[[0;32m  OK  [0m] Finished [0;1;39msystemd-sysctl.service[0m - Apply Kernel Variables.
+
+[[0;32m  OK  [0m] Finished [0;1;39msystemd-tmpfiles-setup-de…[0mic Device Nodes in /dev gracefully.
+
+         Starting [0;1;39msystemd-journal-flush.ser…[0msh Journal to Persistent Storage...
+
+         Starting [0;1;39msystemd-tmpfiles-setup-de…[0meate Static Device Nodes in /dev...
+
+[[0;32m  OK  [0m] Finished [0;1;39msystemd-tmpfiles-setup-de…[0mCreate Static Device Nodes in /dev.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mlocal-fs-pre.target[0m…Preparation for Local File Systems.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mlocal-fs.target[0m - Local File Systems.
+
+[[0;32m  OK  [0m] Listening on [0;1;39msystemd-sysext.socket[0m… System Extension Image Management.
+
+         Mounting [0;1;39msdcard-Stryker.mount[0m - /sdcard/Stryker...
+
+         Starting [0;1;39mstryker-guest.service[0m - S… keys, share, regulatory domain)...
+
+         Starting [0;1;39msystemd-udevd.service[0m - R…ager for Device Events and Files...
+
+[[0;32m  OK  [0m] Finished [0;1;39msystemd-journal-flush.ser…[0mlush Journal to Persistent Storage.
+
+         Starting [0;1;39msystemd-tmpfiles-setup.se…[0mate System Files and Directories...
+
+[[0;32m  OK  [0m] Mounted [0;1;39msdcard-Stryker.mount[0m - /sdcard/Stryker.
+
+[[0;32m  OK  [0m] Finished [0;1;39msystemd-tmpfiles-setup.se…[0mreate System Files and Directories.
+
+[[0;32m  OK  [0m] Started [0;1;39msystemd-udevd.service[0m - Ru…anager for Device Events and Files.
+
+         Starting [0;1;39msystemd-networkd.service[0m - Network Configuration...
+
+STRYKER_INIT filesystem grown to fill /dev/vda
+[   79.850553] stryker-guest-init[226]: stryker-init: filesystem grown to fill /dev/vda
+[[0;32m  OK  [0m] Finished [0;1;39msystemd-udev-trigger.service[0m - Coldplug All udev Devices.
+
+[[0;32m  OK  [0m] Reached target [0;1;39msysinit.target[0m - System Initialization.
+
+[[0;32m  OK  [0m] Started [0;1;39mapt-daily.timer[0m - Daily apt download activities.
+
+[[0;32m  OK  [0m] Started [0;1;39mapt-daily-upgrade.timer[0m - …y apt upgrade and clean activities.
+
+[[0;32m  OK  [0m] Started [0;1;39mdpkg-db-backup.timer[0m - Daily dpkg database backup timer.
+
+[[0;32m  OK  [0m] Started [0;1;39me2scrub_all.timer[0m - Period…Metadata Check for All Filesystems.
+
+[[0;32m  OK  [0m] Started [0;1;39mfstrim.timer[0m - Discard unused filesystem blocks once a week.
+
+[[0;32m  OK  [0m] Started [0;1;39mlogrotate.timer[0m - Daily rotation of log files.
+
+[[0;32m  OK  [0m] Started [0;1;39msystemd-tmpfiles-clean.tim…[0my Cleanup of Temporary Directories.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mtimers.target[0m - Timer Units.
+
+[[0;32m  OK  [0m] Listening on [0;1;39mdbus.socket[0m - D-Bus System Message Bus Socket.
+
+         Starting [0;1;39msnapd.socket[0m - Socket activation for snappy daemon...
+
+[[0;32m  OK  [0m] Listening on [0;1;39msshd-unix-local.socke…[0mtemd-ssh-generator, AF_UNIX Local).
+
+[[0;32m  OK  [0m] Listening on [0;1;39msystemd-hostnamed.socket[0m - Hostname Service Socket.
+
+         Starting [0;1;39mifupdown-pre.service[0m - He…synchronize boot up for ifupdown...
+
+[[0;32m  OK  [0m] Listening on [0;1;39msnapd.socket[0m - Socket activation for snappy daemon.
+
+[[0;32m  OK  [0m] Reached target [0;1;39msockets.target[0m - Socket Units.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mbasic.target[0m - Basic System.
+
+[[0;32m  OK  [0m] Started [0;1;39mcron.service[0m - Regular background program processing daemon.
+
+STRYKER_INIT ready (ssh on 22, share /sdcard/Stryker)
+[   82.522738] stryker-guest-init[226]: stryker-init: ready (ssh on 22, share /sdcard/Stryker)
+         Starting [0;1;39mdbus.service[0m - D-Bus System Message Bus...
+
+         Starting [0;1;39me2scrub_reap.service[0m - Re…ne ext4 Metadata Check Snapshots...
+
+[[0;32m  OK  [0m] Reached target [0;1;39mgetty-pre.target[0m - Preparation for Logins.
+
+         Starting [0;1;39msnapd.seeded.service[0m - Wait until snapd is fully seeded...
+
+         Starting [0;1;39msnapd.service[0m - Snap Daemon...
+
+         Starting [0;1;39msystemd-logind.service[0m - User Login Management...
+
+[[0;32m  OK  [0m] Started [0;1;39msystemd-networkd.service[0m - Network Configuration.
+
+[[0;32m  OK  [0m] Started [0;1;39mdbus.service[0m - D-Bus System Message Bus.
+
+[[0;32m  OK  [0m] Finished [0;1;39mstryker-guest.service[0m - S…SH keys, share, regulatory domain).
+
+[[0;32m  OK  [0m] Finished [0;1;39mifupdown-pre.service[0m - He…o synchronize boot up for ifupdown.
+
+         Starting [0;1;39mnetworking.service[0m - Raise network interfaces...
+
+         Starting [0;1;39msystemd-networkd-persiste…[0mtent Storage in systemd-networkd...
+
+         Starting [0;1;39mwpa_supplicant.service[0m - WPA supplicant...
+
+[[0;32m  OK  [0m] Finished [0;1;39me2scrub_reap.service[0m - Re…line ext4 Metadata Check Snapshots.
+
+[[0;31m*[0;1;31m*[0m[0;31m*   [0m] (1 of 8) Job networking.service/start running (40s / 5min 34s)
+
+M
+[K[ [0;31m*[0;1;31m*[0m[0;31m*  [0m] (2 of 8) Job dev-hvc0.device/start running (40s / 1min 30s)
+
+M
+[K[  [0;31m*[0;1;31m*[0m[0;31m* [0m] (2 of 8) Job dev-hvc0.device/start running (41s / 1min 30s)
+
+M
+[K[   [0;31m*[0;1;31m*[0m[0;31m*[0m] (2 of 8) Job dev-hvc0.device/start running (41s / 1min 30s)
+
+M
+[K[    [0;31m*[0;1;31m*[0m] (3 of 8) Job systemd-networkd-persi…ice/start running (42s / no limit)
+
+M
+[K[     [0;31m*[0m] (3 of 8) Job systemd-networkd-persi…ice/start running (42s / no limit)
+
+M
+[K[    [0;31m*[0;1;31m*[0m] (3 of 8) Job systemd-networkd-persi…ice/start running (43s / no limit)
+
+M
+[K[[0;32m  OK  [0m] Started [0;1;39msystemd-logind.service[0m - User Login Management.
+
+[K[[0;32m  OK  [0m] Finished [0;1;39msystemd-networkd-persiste…[0mistent Storage in systemd-networkd.
+
+[[0;32m  OK  [0m] Started [0;1;39mwpa_supplicant.service[0m - WPA supplicant.
+
+[   [0;31m*[0;1;31m*[0m[0;31m*[0m] (4 of 5) Job snapd.seeded.service/start running (46s / no limit)
+
+M
+[K[  [0;31m*[0;1;31m*[0m[0;31m* [0m] (4 of 5) Job snapd.seeded.service/start running (47s / no limit)
+
+M
+[K[ [0;31m*[0;1;31m*[0m[0;31m*  [0m] (4 of 5) Job snapd.seeded.service/start running (47s / no limit)
+
+M
+[K[[0;32m  OK  [0m] Found device [0;1;39mdev-hvc0.device[0m - /dev/hvc0.
+
+[K[[0;31m*[0;1;31m*[0m[0;31m*   [0m] (1 of 4) Job networking.service/start running (50s / 5min 34s)
+
+M
+[K[[0;1;31m*[0m[0;31m*    [0m] (1 of 4) Job networking.service/start running (51s / 5min 34s)
+
+M
+[K[[0m[0;31m*     [0m] (1 of 4) Job networking.service/start running (51s / 5min 34s)
+
+M
+[K[[0;1;31m*[0m[0;31m*    [0m] (2 of 4) Job dev-ttyAMA0.device/start running (52s / 1min 30s)
+
+M
+[K[[0;32m  OK  [0m] Found device [0;1;39mdev-ttyAMA0.device[0m - /dev/ttyAMA0.
+
+[K[[0;32m  OK  [0m] Finished [0;1;39mnetworking.service[0m - Raise network interfaces.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mnetwork.target[0m - Network.
+
+         Starting [0;1;39mssh.service[0m - OpenBSD Secure Shell server...
+
+         Starting [0;1;39msystemd-user-sessions.service[0m - Permit User Sessions...
+
+[[0;31m*[0;1;31m*[0m[0;31m*   [0m] (2 of 4) Job ssh.service/start running (56s / 2min 24s)
+
+M
+[K[ [0;31m*[0;1;31m*[0m[0;31m*  [0m] (2 of 4) Job ssh.service/start running (57s / 2min 24s)
+
+M
+[K[[0;32m  OK  [0m] Finished [0;1;39msystemd-user-sessions.service[0m - Permit User Sessions.
+
+[K[[0;32m  OK  [0m] Started [0;1;39msnapd.service[0m - Snap Daemon.
+
+[[0;32m  OK  [0m] Started [0;1;39mssh.service[0m - OpenBSD Secure Shell server.
+
+[[0;32m  OK  [0m] Started [0;1;39mgetty@tty1.service[0m - Getty on tty1.
+
+[[0;32m  OK  [0m] Started [0;1;39mserial-getty@hvc0.service[0m - Serial Getty on hvc0.
+
+[[0;32m  OK  [0m] Started [0;1;39mserial-getty@ttyAMA0.service[0m - Serial Getty on ttyAMA0.
+
+[[0;32m  OK  [0m] Reached target [0;1;39mgetty.target[0m - Login Prompts.
+
+         Starting [0;1;39msystemd-timedated.service[0m - Time & Date Service...
+
+[[0;32m  OK  [0m] Created slice [0;1;39muser-0.slice[0m - User Slice of UID 0.
+
+         Starting [0;1;39muser-runtime-dir@0.servic…[0mer Runtime Directory /run/user/0...
+
+[[0;32m  OK  [0m] Started [0;1;39msystemd-timedated.service[0m - Time & Date Service.
+
+[!p]104[?7h[6n[32766;32766H[6n[!p]104[?7h[6n[32766;32766H[6n
+
+Debian GNU/Linux 13 stryker ttyAMA0
+
+stryker login: 
+
+stryker login: tar xf /sdcard/Stryker/.stryker-guest-core.tar -C / 2>&1; chmod 0755 /usr/local/sbin/stryker-ptyd /usr/local/sbin/stryker-agentd 2>/dev/null; echo __AGENT_BYTES__$(wc -c < /usr/local/sbin/stryker-agentd 2>/dev/null || echo 0); if [ -s /usr/local/sbin/stryker-agentd ] && [ -x /usr/local/sbin/stryker-agentd ] && [ -f /CORE/PixieWps/pixie.py ]; then echo __DEPLOYED__; else echo __FAIL__; fi; command -v socat >/dev/null 2>&1 || (export DEBIAN_FRONTEND=noninteractive; apt-get install -y --no-install-recommends socat >/dev/null 2>&1); (systemctl restart stryker-agent.service >/dev/null 2>&1 || (pkill -f stryker-agentd >/dev/null 2>&1; setsid /usr/local/sbin/stryker-agentd >/dev/null 2>&1 &)); sleep 3; ss -ltn 2>/dev/null | grep -q ':1050' && echo __AGENT_UP__ || echo __AGENT_DOWN__
+
+[!p]104[?7h[6n[32766;32766H[6n
+
+
+app log
+
+
+
+==== Stryker log export ====
+2026-10-07 05:07:18.840 [INFO] [session] ==== Stryker 6.5.2 session start ====
+2026-10-07 05:07:18.840 [INFO] [session] Device: Xiaomi POCOPHONE F1 · Android 10 (arm64-v8a)
+2026-10-07 05:07:29.811 [CMD] [core] id
+2026-10-07 05:07:29.822 [ERR] [core] su is not available on this device
+2026-10-07 05:08:41.387 [INFO] [Engines] active engine: UML
+2026-10-07 05:08:41.388 [INFO] [Engines] active engine: ROOTLESS
+2026-10-07 05:08:41.388 [INFO] [Engines] active engine: UML
+2026-10-07 05:11:10.243 [INFO] [Engines] active engine: ROOTLESS
+2026-10-07 05:11:32.855 [INFO] [UmlEngine] startBlocking: installed=true running=false
+2026-10-07 05:11:33.045 [INFO] [GuestSsh] keypair type 5 unusable here: java.lang.UnsupportedOperationException
+2026-10-07 05:11:33.045 [INFO] [GuestSsh] Ed25519 cannot be stored by this jsch build; using RSA
+2026-10-07 05:11:35.136 [INFO] [GuestSsh] generated a new keypair for the guest
+2026-10-07 05:11:35.141 [INFO] [UmlEngine] starting: /data/app/com.zalexdev.stryker-rMcq7XV7R2nzxjBfqa_V5A==/lib/arm64/libumnet.so --passt /data/app/com.zalexdev.stryker-rMcq7XV7R2nzxjBfqa_V5A==/lib/arm64/libpasst.so --fwd 127.0.0.1/2222:22 -- /data/app/com.zalexdev.stryker-rMcq7XV7R2nzxjBfqa_V5A==/lib/arm64/libuml.so mem=4096M panic=-1 con=null con0=fd:0,fd:1 stub_exe=/data/app/com.zalexdev.stryker-rMcq7XV7R2nzxjBfqa_V5A==/lib/arm64/libstub.so seccomp=auto ncpus=4 ubd0=/data/user/0/com.zalexdev.stryker/files/rootless/rootfs.img root=/dev/ubda rw init=/stryker-init stryker.share=/storage/emulated/0/Stryker firmware_class.path=/host/firmware
+2026-10-07 05:11:35.141 [INFO] [guest] UML engine starting, share /storage/emulated/0/Stryker
+2026-10-07 05:11:35.143 [WARN] [guest] no host tempdir: guest memory will live in /data/user/0/com.zalexdev.stryker/files/uml/tmp
+2026-10-07 05:11:35.169 [WARN] [GuestSsh] ping failed at session: JSchException java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42156) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)
+2026-10-07 05:11:36.175 [WARN] [GuestSsh] ping failed at session: JSchException java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42158) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)
+2026-10-07 05:11:37.182 [WARN] [GuestSsh] ping failed at session: JSchException java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42160) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)
+2026-10-07 05:11:38.005 [INFO] [UmlEngine] STRYKER_BOOT mounted
+2026-10-07 05:11:38.188 [WARN] [GuestSsh] ping failed at session: JSchException java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42162) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)
+2026-10-07 05:11:38.583 [INFO] [UmlEngine] STRYKER_BOOT network
+2026-10-07 05:11:39.191 [ERR] [guest] UML engine: last lines of the guest console:
+  faux_driver regulatory: Direct firmware load for regulatory.db failed with error -2
+  cfg80211: failed to load regulatory.db
+  EXT4-fs (ubda): mounted filesystem 3c95ac3d-96a5-4e61-b428-beae8d543e0c r/w with ordered data mode. Quota mode: none.
+  VFS: Mounted root (ext4 filesystem) on device 98:0.
+  devtmpfs: mounted
+  VFS: Pivoted into new rootfs
+  Run /stryker-init as init process
+  EXT4-fs (ubda): re-mounted 3c95ac3d-96a5-4e61-b428-beae8d543e0c.
+  STRYKER_BOOT mounted
+  STRYKER_BOOT network
+  umnet: kernel killed by signal 31 (Bad system call)
+  umnet: passt exited 90
+2026-10-07 05:11:39.204 [WARN] [UmlEngine] boot failed: the guest exited (159): MADV_REMOVE failed, err = -95
+  Checking environment variables for a tempdir.../data/user/0/com.zalexdev.stryker/files/uml/tmp
+  Warning: tempdir /data/user/0/com.zalexdev.stryker/files/uml/tmp is not on tmpfs
+  Checking that seccomp filters can be installed...OK
+  Userspace mode: SECCOMP — the kernel backs guest memory with a file in /data/user/0/com.zalexdev.stryker/files/uml/tmp, which is on ext4 rather than tmpfs, and only tmpfs supports MADV_REMOVE. This device gives apps no writable tmpfs, so UML cannot run here; the QEMU engine does not need it.
+2026-10-07 05:11:39.204 [ERR] [guest] UML engine: the guest exited (159): MADV_REMOVE failed, err = -95
+  Checking environment variables for a tempdir.../data/user/0/com.zalexdev.stryker/files/uml/tmp
+  Warning: tempdir /data/user/0/com.zalexdev.stryker/files/uml/tmp is not on tmpfs
+  Checking that seccomp filters can be installed...OK
+  Userspace mode: SECCOMP — the kernel backs guest memory with a file in /data/user/0/com.zalexdev.stryker/files/uml/tmp, which is on ext4 rather than tmpfs, and only tmpfs supports MADV_REMOVE. This device gives apps no writable tmpfs, so UML cannot run here; the QEMU engine does not need it.
+2026-10-07 05:11:39.205 [INFO] [Engines] active engine: UML
+2026-10-07 05:11:39.205 [INFO] [Engines] active engine: ROOTLESS
+2026-10-07 05:11:39.214 [WARN] [GuestExec] run failed: java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42164) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)
+2026-10-07 05:11:39.214 [ERR] [guest] guest exec failed — no ssh session to the guest on :2222 (java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42164) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)) · nohup poweroff >/dev/null 2>&1 &
+2026-10-07 05:11:39.214 [WARN] [GuestExec] guest command produced no output: nohup poweroff >/dev/null 2>&1 &
+2026-10-07 05:11:56.904 [INFO] [guest] VM disk grew 8 GB -> 49 GB to match free storage
+2026-10-07 05:11:59.131 [INFO] [RootlessEngine] QEMU: /data/app/com.zalexdev.stryker-rMcq7XV7R2nzxjBfqa_V5A==/lib/arm64/libqemu.so -nodefaults -M virt,gic-version=3 -cpu max,sve=off,pmu=off,pauth=off -accel tcg,thread=multi,tb-size=512 -smp 4,sockets=1,cores=4,threads=1 -m 4096 -kernel /data/user/0/com.zalexdev.stryker/files/rootless/Image -initrd /data/user/0/com.zalexdev.stryker/files/rootless/initrd.img -append root=/dev/vda rw rootwait rootflags=noatime console=ttyAMA0 loglevel=4 net.ifnames=0 mitigations=off stryker.rootless=1 init_on_alloc=0 init_on_free=0 audit=0 nokaslr rcupdate.rcu_expedited=1 rcupdate.rcu_normal_after_boot=1 cryptomgr.notests random.trust_bootloader=on -drive file=/data/user/0/com.zalexdev.stryker/files/rootless/rootfs.img,if=none,id=drive0,format=raw,cache=writeback,aio=threads,discard=unmap,detect-zeroes=unmap -object iothread,id=io0 -device virtio-blk-pci,drive=drive0,iothread=io0 -netdev user,id=net0,ipv6=off,hostfwd=tcp:127.0.0.1:2222-:22 -device virtio-net-pci,netdev=net0,romfile= -device qemu-xhci,id=usbhc0,p2=8,p3=8 -device virtio-rng-pci -fsdev local,id=fsdev0,security_model=none,path=/storage/emulated/0/Stryker -device virtio-9p-pci,fsdev=fsdev0,mount_tag=strykershare -chardev socket,id=serial0,path=/data/user/0/com.zalexdev.stryker/files/rootless/serial.sock,server=on,wait=off,logfile=/data/user/0/com.zalexdev.stryker/files/rootless/serial.log -serial chardev:serial0 -device virtio-serial-pci -chardev socket,id=term0,path=/data/user/0/com.zalexdev.stryker/files/rootless/term.sock,server=on,wait=off -device virtconsole,chardev=term0,name=org.stryker.term -display none -qmp unix:/data/user/0/com.zalexdev.stryker/files/rootless/qmp.sock,server,nowait
+2026-10-07 05:11:59.140 [WARN] [GuestSsh] ping failed at session: JSchException java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42166) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)
+2026-10-07 05:12:20.209 [WARN] [GuestSsh] ping failed at session: JSchException Session.connect: java.net.SocketTimeoutException: Read timed out
+2026-10-07 05:12:41.241 [WARN] [GuestSsh] ping failed at session: JSchException Session.connect: java.net.SocketTimeoutException: Read timed out
+2026-10-07 05:13:02.271 [WARN] [GuestSsh] ping failed at session: JSchException Session.connect: java.net.SocketTimeoutException: Read timed out
+2026-10-07 05:13:23.323 [WARN] [GuestSsh] ping failed at session: JSchException Session.connect: java.net.SocketTimeoutException: Read timed out
+2026-10-07 05:13:42.240 [WARN] [GuestSsh] ping failed at session: JSchException Session.connect: java.net.SocketException: Connection reset
+2026-10-07 05:13:52.757 [WARN] [GuestSsh] ping failed at session: JSchException Session.connect: java.net.SocketException: Connection reset
+2026-10-07 05:14:03.198 [WARN] [GuestSsh] ping failed at session: JSchException Session.connect: java.net.SocketException: Connection reset
+2026-10-07 05:14:13.575 [WARN] [GuestSsh] ping failed at session: JSchException Session.connect: java.net.SocketException: Connection reset
+2026-10-07 05:14:27.139 [INFO] [GuestSsh] connected to the guest over ssh on port 2222
+2026-10-07 05:14:42.149 [WARN] [GuestSsh] ping failed at channel: JSchException channel is not opened.
+2026-10-07 05:14:42.156 [ERR] [guest] guest agent unreachable — bootstrapping it over the serial console
+2026-10-07 05:14:43.308 [ERR] [guest] VM boot failed (Boot timed out after 150s — the guest finished booting but nothing answered on its SSH port, and nothing on the console says why), falling back to the safe profile (aio=threads, cache=writeback, legacy CPU, no virtio-rng, no fast boot)
+2026-10-07 05:14:45.844 [INFO] [guest] guest agent started from the console
+2026-10-07 05:14:46.659 [INFO] [RootlessEngine] QEMU: /data/app/com.zalexdev.stryker-rMcq7XV7R2nzxjBfqa_V5A==/lib/arm64/libqemu.so -nodefaults -M virt,gic-version=3 -cpu max,sve=off,pauth-impdef=on -accel tcg,thread=multi,tb-size=512 -smp 4,sockets=1,cores=4,threads=1 -m 4096 -kernel /data/user/0/com.zalexdev.stryker/files/rootless/Image -initrd /data/user/0/com.zalexdev.stryker/files/rootless/initrd.img -append root=/dev/vda rw rootwait rootflags=noatime console=ttyAMA0 loglevel=4 net.ifnames=0 mitigations=off stryker.rootless=1 -drive file=/data/user/0/com.zalexdev.stryker/files/rootless/rootfs.img,if=none,id=drive0,format=raw,cache=writeback,aio=threads,discard=unmap,detect-zeroes=unmap -device virtio-blk-pci,drive=drive0 -netdev user,id=net0,ipv6=off,hostfwd=tcp:127.0.0.1:2222-:22 -device virtio-net-pci,netdev=net0,romfile= -device qemu-xhci,id=usbhc0,p2=8,p3=8 -fsdev local,id=fsdev0,security_model=none,path=/storage/emulated/0/Stryker -device virtio-9p-pci,fsdev=fsdev0,mount_tag=strykershare -chardev socket,id=serial0,path=/data/user/0/com.zalexdev.stryker/files/rootless/serial.sock,server=on,wait=off,logfile=/data/user/0/com.zalexdev.stryker/files/rootless/serial.log -serial chardev:serial0 -device virtio-serial-pci -chardev socket,id=term0,path=/data/user/0/com.zalexdev.stryker/files/rootless/term.sock,server=on,wait=off -device virtconsole,chardev=term0,name=org.stryker.term -display none -qmp unix:/data/user/0/com.zalexdev.stryker/files/rootless/qmp.sock,server,nowait
+2026-10-07 05:14:46.670 [WARN] [GuestSsh] ping failed at session: JSchException java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42334) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)
+2026-10-07 05:15:07.686 [WARN] [GuestSsh] ping failed at session: JSchException Session.connect: java.net.SocketTimeoutException: Read timed out
+2026-10-07 05:15:28.734 [WARN] [GuestSsh] ping failed at session: JSchException Session.connect: java.net.SocketTimeoutException: Read timed out
+2026-10-07 05:15:49.252 [WARN] [GuestSsh] ping failed at session: JSchException Session.connect: java.net.SocketException: Connection reset
+2026-10-07 05:16:05.372 [WARN] [GuestSsh] ping failed at session: JSchException java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42358) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)
+2026-10-07 05:16:05.662 [CMD] [checking] Checking file /storage/emulated/0/Stryker/exploits/checker.py
+2026-10-07 05:16:05.743 [INFO] [RootlessEngine] QEMU: /data/app/com.zalexdev.stryker-rMcq7XV7R2nzxjBfqa_V5A==/lib/arm64/libqemu.so -nodefaults -M virt,gic-version=3 -cpu max,sve=off,pmu=off,pauth=off -accel tcg,thread=multi,tb-size=512 -smp 4,sockets=1,cores=4,threads=1 -m 4096 -kernel /data/user/0/com.zalexdev.stryker/files/rootless/Image -initrd /data/user/0/com.zalexdev.stryker/files/rootless/initrd.img -append root=/dev/vda rw rootwait rootflags=noatime console=ttyAMA0 loglevel=4 net.ifnames=0 mitigations=off stryker.rootless=1 init_on_alloc=0 init_on_free=0 audit=0 nokaslr rcupdate.rcu_expedited=1 rcupdate.rcu_normal_after_boot=1 cryptomgr.notests random.trust_bootloader=on -drive file=/data/user/0/com.zalexdev.stryker/files/rootless/rootfs.img,if=none,id=drive0,format=raw,cache=writeback,aio=threads,discard=unmap,detect-zeroes=unmap -object iothread,id=io0 -device virtio-blk-pci,drive=drive0,iothread=io0 -netdev user,id=net0,ipv6=off,hostfwd=tcp:127.0.0.1:2222-:22 -device virtio-net-pci,netdev=net0,romfile= -device qemu-xhci,id=usbhc0,p2=8,p3=8 -device virtio-rng-pci -fsdev local,id=fsdev0,security_model=none,path=/storage/emulated/0/Stryker -device virtio-9p-pci,fsdev=fsdev0,mount_tag=strykershare -chardev socket,id=serial0,path=/data/user/0/com.zalexdev.stryker/files/rootless/serial.sock,server=on,wait=off,logfile=/data/user/0/com.zalexdev.stryker/files/rootless/serial.log -serial chardev:serial0 -device virtio-serial-pci -chardev socket,id=term0,path=/data/user/0/com.zalexdev.stryker/files/rootless/term.sock,server=on,wait=off -device virtconsole,chardev=term0,name=org.stryker.term -display none -qmp unix:/data/user/0/com.zalexdev.stryker/files/rootless/qmp.sock,server,nowait
+2026-10-07 05:16:05.755 [WARN] [GuestSsh] ping failed at session: JSchException java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42360) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)
+2026-10-07 05:16:25.861 [WARN] [GuestSsh] ping failed at session: JSchException Session.connect: java.net.SocketTimeoutException: Read timed out
+2026-10-07 05:16:45.883 [WARN] [GuestSsh] ping failed at session: JSchException Session.connect: java.net.SocketTimeoutException: Read timed out
+2026-10-07 05:17:05.913 [WARN] [GuestSsh] ping failed at session: JSchException Session.connect: java.net.SocketTimeoutException: Read timed out
+2026-10-07 05:17:25.943 [WARN] [GuestSsh] ping failed at session: JSchException Session.connect: java.net.SocketTimeoutException: Read timed out
+2026-10-07 05:17:43.739 [WARN] [GuestSsh] ping failed at session: JSchException Session.connect: java.net.SocketException: Connection reset
+2026-10-07 05:17:53.901 [WARN] [GuestSsh] ping failed at session: JSchException Session.connect: java.net.SocketException: Connection reset
+2026-10-07 05:18:09.686 [INFO] [GuestSsh] connected to the guest over ssh on port 2222
+2026-10-07 05:18:11.189 [WARN] [GuestSsh] ping failed at channel: JSchException channel is not opened.
+2026-10-07 05:18:23.517 [WARN] [GuestSsh] ping failed at channel: JSchException channel is not opened.
+2026-10-07 05:18:24.697 [ERR] [guest] guest agent unreachable — bootstrapping it over the serial console
+2026-10-07 05:18:33.537 [WARN] [GuestSsh] ping failed at channel: JSchException channel is not opened.
+2026-10-07 05:18:41.860 [ERR] [guest] VM boot failed (Boot timed out after 150s — the guest finished booting but nothing answered on its SSH port, and nothing on the console says why), falling back to the safe profile (aio=threads, cache=writeback, legacy CPU, no virtio-rng, no fast boot)
+2026-10-07 05:18:42.568 [INFO] [GuestSsh] guest is answering again
+2026-10-07 05:18:42.730 [INFO] [guest] expanding VM disk filesystem (resize2fs /dev/vda)…
+2026-10-07 05:18:44.372 [INFO] [guest] VM disk filesystem already fills the image
+2026-10-07 05:18:44.376 [INFO] [guest] guest agent started from the console
+2026-10-07 05:18:44.392 [WARN] [GuestExec] run failed: java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42520) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)
+2026-10-07 05:18:44.392 [ERR] [guest] guest exec failed — no ssh session to the guest on :2222 (java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42520) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)) · command -v fstrim >/dev/null 2>&1 && fstrim / 2>&1 || true
+2026-10-07 05:18:44.392 [WARN] [GuestExec] guest command produced no output: command -v fstrim >/dev/null 2>&1 && fstrim / 2>&1 || true
+2026-10-07 05:18:44.395 [WARN] [GuestExec] run failed: java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42522) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)
+2026-10-07 05:18:44.395 [ERR] [guest] guest exec failed — no ssh session to the guest on :2222 (java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42522) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)) · [ -f /lib/firmware/ath9k_htc/htc_9271-1.4.0.fw ] && echo __FW_OK__ || echo __FW_MISSING__
+2026-10-07 05:18:44.395 [WARN] [GuestExec] guest command produced no output: [ -f /lib/firmware/ath9k_htc/htc_9271-1.4.0.fw ] && echo __FW_OK__ || echo __FW_MISSING__
+2026-10-07 05:18:44.395 [INFO] [guest] guest is missing /lib/firmware/ath9k_htc/htc_9271-1.4.0.fw — installing firmware-ath9k-htc (ath9k_htc dongles fail with "Target is unresponsive" without it)
+2026-10-07 05:18:44.398 [WARN] [GuestExec] run failed: java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42524) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)
+2026-10-07 05:18:44.398 [ERR] [guest] guest exec failed — no ssh session to the guest on :2222 (java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42524) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)) · export DEBIAN_FRONTEND=noninteractive; apt-get install -y --no-install-recommends firmware…
+2026-10-07 05:18:44.398 [WARN] [GuestExec] guest command produced no output: export DEBIAN_FRONTEND=noninteractive; apt-get install -y --no-install-recommends firmware…
+2026-10-07 05:18:44.400 [WARN] [GuestExec] run failed: java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42526) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)
+2026-10-07 05:18:44.401 [ERR] [guest] guest exec failed — no ssh session to the guest on :2222 (java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42526) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)) · [ -f /lib/firmware/ath9k_htc/htc_9271-1.4.0.fw ] && echo __FW_OK__ || echo __FW_MISSING__
+2026-10-07 05:18:44.401 [WARN] [GuestExec] guest command produced no output: [ -f /lib/firmware/ath9k_htc/htc_9271-1.4.0.fw ] && echo __FW_OK__ || echo __FW_MISSING__
+2026-10-07 05:18:44.401 [ERR] [guest] could not install firmware-ath9k-htc (no network in the VM?)
+2026-10-07 05:18:44.403 [WARN] [GuestExec] run failed: java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42528) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)
+2026-10-07 05:18:44.403 [ERR] [guest] guest exec failed — no ssh session to the guest on :2222 (java.net.ConnectException: failed to connect to /127.0.0.1 (port 2222) from /127.0.0.1 (port 42528) after 20000ms: isConnected failed: ECONNREFUSED (Connection refused)) · mkdir -p /etc/modules-load.d; { echo loop; echo squashfs; echo overlay; } > /etc/modules-l…
+2026-10-07 05:18:44.404 [WARN] [GuestExec] guest command produced no output: mkdir -p /etc/modules-load.d; { echo loop; echo squashfs; echo overlay; } > /etc/modules-l…
+2026-10-07 05:18:44.406 [WARN] [GuestExec] run failed: java.net.Conn
