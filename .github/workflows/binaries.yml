@@ -26,22 +26,29 @@ on:
   workflow_dispatch:
     inputs:
       uml_tree_repo:
-        description: 'Git URL of the arm64 UML port tree (for umnet, umusb, libuml.so). Empty = skip those.'
+        description: >-
+          Git URL of the arm64 UML port tree (for umnet, umusb, libuml.so). The
+          default is the port the shipped binaries came from; empty skips those
+          three, which leaves the UML engine's own USB/IP fix unbuilt.
         required: false
+        default: 'https://github.com/OPX-Aminul/linux-um-arm64'
         type: string
       uml_tree_ref:
         description: 'Branch, tag or sha of that tree.'
         required: false
-        default: 'main'
+        default: 'um-arm64'
         type: string
       uml_tree_tarball:
         description: 'Tarball URL of that tree (alternative to uml_tree_repo).'
         required: false
         type: string
       passt_ref:
-        description: 'passt tag/commit to build (pin it: the shipped binary carries no version string).'
+        description: >-
+          passt tag/commit to build. Pinned to defc25b by default: that is the
+          commit the shipped libpasst.so was built from (its version string is
+          defc25b-bionic). Building main would move the source under the fix.
         required: false
-        default: 'main'
+        default: 'defc25b'
         type: string
       qemu_ver:
         description: 'QEMU release to build.'
@@ -58,9 +65,12 @@ on:
         default: 'r27c'
         type: string
       build_uml_kernel:
-        description: 'Also build the UML kernel (libuml.so) and its stub. Slow, needs the UML tree.'
+        description: >-
+          Also build the UML kernel (libuml.so) and its stub. On by default: the
+          guest kernel carries the Xiaomi/MIUI safety net (images/usb-quirks.py),
+          so turning it off ships the UML engine without that half of the fix.
         required: false
-        default: false
+        default: true
         type: boolean
       upload_engine_assets:
         description: 'Upload qemu-system-aarch64 and libslirp.so to their release tag.'
