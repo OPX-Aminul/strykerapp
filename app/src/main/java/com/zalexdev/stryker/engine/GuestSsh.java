@@ -40,6 +40,14 @@ public final class GuestSsh {
         return lastLoss;
     }
 
+    /**
+     * The last reason the guest could not be reached, in the same words the log uses, so a boot
+     * report can say what the ssh client actually saw. Null once the guest answers again.
+     */
+    public static String lastFailure() {
+        return lastPingFailure;
+    }
+
     static void noteUnreachable() {
         lastLoss = System.currentTimeMillis();
     }

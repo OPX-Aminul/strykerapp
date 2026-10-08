@@ -227,6 +227,79 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # ------------------------------------------------------------------
+      # Feed the APK back to the app itself. Installed copies poll the `app`
+      # block of stryker_manifest.json (UpdateManager) and act on it when
+      # versionCode > the installed one and url/sha256 are usable - so url must
+      # name the asset this run just published, and sha256/size must describe it
+      # byte for byte, or the download is rejected as corrupt.
+      # ------------------------------------------------------------------
+      - name: Point the in-app updater at the new APK
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          apks=(dist/*release.apk)
+          [ ${#apks[@]} -gt 0 ] || apks=(dist/*.apk)
+          [ ${#apks[@]} -gt 0 ] || { echo "::error::no APK in dist"; exit 1; }
+          APK="${apks[0]}"
+
+          python3 - "$APK" <<'PY'
+          import hashlib, json, os, sys
+
+          apk = sys.argv[1]
+          name = os.path.basename(apk)
+          digest = hashlib.sha256()
+          with open(apk, "rb") as fh:
+              for chunk in iter(lambda: fh.read(1 << 20), b""):
+                  digest.update(chunk)
+
+          path = "stryker_manifest.json"
+          with open(path, encoding="utf-8") as fh:
+              manifest = json.load(fh)
+
+          app = manifest.setdefault("app", {})
+          app["versionCode"] = int(os.environ["VERSION_CODE"])
+          app["versionName"] = os.environ["VERSION_NAME"]
+          app["url"] = (f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}"
+                        f"/releases/download/{os.environ['TAG']}/{name}")
+          app["sha256"] = digest.hexdigest()
+          app["size"] = os.path.getsize(apk)
+
+          with open(path, "w", encoding="utf-8") as fh:
+              fh.write(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
+          print(app["url"], app["sha256"], app["size"])
+          PY
+
+          git --no-pager diff --stat stryker_manifest.json
+
+      - name: Commit the manifest
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet stryker_manifest.json; then
+            echo "::notice::stryker_manifest.json already pointed at this APK"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stryker_manifest.json
+          git commit -q -m "manifest: point the in-app updater at ${TAG}"
+          # Name the destination explicitly: a checkout has no upstream configured.
+          BRANCH="${GITHUB_REF_NAME:-$(git rev-parse --abbrev-ref HEAD)}"
+          if git push origin "HEAD:$BRANCH"; then
+            echo "Pushed the manifest for ${TAG} to $BRANCH" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${GITHUB_REF_NAME:-}" = "main" ]; then
+            echo "::error::the APK is released but the manifest could not be pushed to main, so installed apps will not be offered it. Commit stryker_manifest.json by hand."
+            exit 1
+          else
+            echo "::warning::nothing pushed to $BRANCH; the app reads the manifest from main."
+          fi
+
       - name: Summary
         run: |
           {

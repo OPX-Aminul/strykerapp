@@ -153,6 +153,15 @@ chroot "$TREE" systemctl mask   NetworkManager-wait-online.service   >/dev/null 
 chroot "$TREE" systemctl enable ssh.service                          >/dev/null 2>&1 || true
 
 mkdir -p "$TREE/etc/systemd/system/serial-getty@ttyAMA0.service.d"
+cat > "$TREE/etc/systemd/system/serial-getty@ttyAMA0.service.d/autologin.conf" <<'EOF'
+[Service]
+# The app drives this console over the serial socket to start the guest agent when ssh
+# is not usable yet, so it has to be a shell and not a login prompt: the guest locks the
+# root password (stryker-guest-init runs 'passwd -l root'), so a prompt could never be
+# answered and every command typed at it is swallowed as a user name.
+ExecStart=
+ExecStart=-/sbin/agetty --autologin root --noclear --keep-baud 115200,57600,38400,9600 %I $TERM
+EOF
 
 KREL=
 if [ -f "$VMOUT/kernel.release" ]; then

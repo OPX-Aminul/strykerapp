@@ -1,0 +1,471 @@
+name: Build binaries
+
+# Builds every native artifact the app executes, checks that each one is the
+# shape the app requires (static ET_EXEC with 16 KB pages, or a bionic PIE for
+# QEMU — see images/BINARIES.md), stages the results over the copies committed in
+# jniLibs, refreshes the hashes in stryker_manifest.json, and then starts the
+# app release workflow so a new APK is built and published with them.
+#
+# Release assets: whatever this run rebuilt is uploaded to the tag the manifest
+# names for it — qemu-system-aarch64 and libslirp.so to rootless-main, linux-uml
+# and stub_exe to rootless-650 — and the sha256/size of every entry pointing at an
+# uploaded file is refreshed in the same run, because the app verifies a download
+# against those two numbers (VerifiedDownloader) before it will use it. Entries
+# for files this run did not build are left untouched, so they stay valid.
+#
+# Run it from Actions -> Build binaries -> Run workflow, on main: installed apps
+# read stryker_manifest.json from main (StrykerEndpoints.MANIFEST_URL), so a run
+# on any other branch updates hashes they will never see.
+#
+# The arm64 UML port is not a public repository, so umnet/libuml.so/libumusb.so
+# can only be built when that tree is handed to the run — either as a git URL
+# (uml_tree_repo, with optional uml_tree_token) or as a tarball URL. Without it
+# the run still builds passt, QEMU, libslirp, umusb and bash.
+
+on:
+  workflow_dispatch:
+    inputs:
+      uml_tree_repo:
+        description: 'Git URL of the arm64 UML port tree (for umnet, umusb, libuml.so). Empty = skip those.'
+        required: false
+        type: string
+      uml_tree_ref:
+        description: 'Branch, tag or sha of that tree.'
+        required: false
+        default: 'main'
+        type: string
+      uml_tree_tarball:
+        description: 'Tarball URL of that tree (alternative to uml_tree_repo).'
+        required: false
+        type: string
+      passt_ref:
+        description: 'passt tag/commit to build (pin it: the shipped binary carries no version string).'
+        required: false
+        default: 'main'
+        type: string
+      qemu_ver:
+        description: 'QEMU release to build.'
+        required: false
+        default: '11.0.2'
+        type: string
+      ndk_version:
+        description: 'NDK release the artifacts are built with.'
+        required: false
+        default: 'r27c'
+        type: string
+      build_uml_kernel:
+        description: 'Also build the UML kernel (libuml.so) and its stub. Slow, needs the UML tree.'
+        required: false
+        default: false
+        type: boolean
+      upload_engine_assets:
+        description: 'Upload qemu-system-aarch64 and libslirp.so to their release tag.'
+        required: false
+        default: true
+        type: boolean
+      trigger_release:
+        description: 'Start "Build & Release" after the commit.'
+        required: false
+        default: true
+        type: boolean
+      release_version:
+        description: 'Version to hand to the release workflow (empty = it bumps the build number).'
+        required: false
+        type: string
+
+permissions:
+  contents: write        # commit the binaries, upload release assets
+  actions: write         # start the release workflow
+
+concurrency:
+  group: binaries-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NDK_ARCHIVE: android-ndk-${{ inputs.ndk_version }}-linux.zip
+  NDK_DIR: ${{ github.workspace }}/.ndk/android-ndk-${{ inputs.ndk_version }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        # QEMU plus glib plus an NDK does not fit next to the preinstalled images.
+        run: |
+          set -euo pipefail
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android/sdk/ndk \
+                      /opt/hostedtoolcache/CodeQL /usr/local/share/boost 2>/dev/null || true
+          df -h / | tail -1
+
+      - name: Install build tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            meson ninja-build autoconf automake libtool pkg-config \
+            bzip2 xz-utils flex bison gperf gettext zip unzip
+          python3 -m pip install --user --upgrade "meson>=1.5" ninja
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          meson --version
+
+      - name: Cache the NDK
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NDK_DIR }}
+          key: ndk-${{ inputs.ndk_version }}-linux
+
+      - name: Install the NDK
+        run: |
+          set -euo pipefail
+          if [ ! -x "$NDK_DIR/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" ]; then
+            mkdir -p "$(dirname "$NDK_DIR")"
+            curl -fL --retry 3 -o /tmp/ndk.zip \
+              "https://dl.google.com/android/repository/${NDK_ARCHIVE}"
+            unzip -q /tmp/ndk.zip -d "$(dirname "$NDK_DIR")"
+            rm -f /tmp/ndk.zip
+          fi
+          "$NDK_DIR/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" --version | head -2
+          echo "NDK=$NDK_DIR" >> "$GITHUB_ENV"
+
+      - name: Fetch the arm64 UML port tree
+        if: inputs.uml_tree_repo != '' || inputs.uml_tree_tarball != ''
+        env:
+          TREE_URL: ${{ inputs.uml_tree_repo }}
+          TREE_REF: ${{ inputs.uml_tree_ref }}
+          TREE_TARBALL: ${{ inputs.uml_tree_tarball }}
+          # A private port repo: set the repository secret UML_TREE_TOKEN.
+          TREE_TOKEN: ${{ secrets.UML_TREE_TOKEN }}
+        run: |
+          set -euo pipefail
+          TREE_DIR="$RUNNER_TEMP/uml-tree"
+          rm -rf "$TREE_DIR"
+          if [ -n "$TREE_TARBALL" ]; then
+            mkdir -p "$TREE_DIR"
+            curl -fL --retry 3 -o /tmp/uml-tree.tar.gz "$TREE_TARBALL"
+            tar xf /tmp/uml-tree.tar.gz -C "$TREE_DIR" --strip-components=1
+          else
+            CLONE_URL="$TREE_URL"
+            if [ -n "$TREE_TOKEN" ]; then
+              CLONE_URL="$(printf '%s' "$TREE_URL" | sed "s#https://#https://x-access-token:${TREE_TOKEN}@#")"
+            fi
+            git clone --depth 1 --branch "$TREE_REF" "$CLONE_URL" "$TREE_DIR" \
+              || git clone --depth 1 "$CLONE_URL" "$TREE_DIR"
+          fi
+          test -d "$TREE_DIR" || { echo "::error::the UML tree did not arrive"; exit 1; }
+          echo "TREE=$TREE_DIR" >> "$GITHUB_ENV"
+          echo "$(ls -1 "$TREE_DIR" | head -5 | tr '\n' ' ')" > /tmp/tree-banner
+          cat /tmp/tree-banner
+
+      - name: Build the APK binaries
+        env:
+          PASST_REF: ${{ inputs.passt_ref }}
+          QEMU_VER: ${{ inputs.qemu_ver }}
+          STAGE_TO_APK: '1'
+        run: |
+          set -euo pipefail
+          if [ -z "${TREE:-}" ]; then
+            echo "::notice::no UML tree in this run: umnet and umusb are skipped"
+            export SKIP_UMNET=1 SKIP_UMUSB=1
+          fi
+          bash images/build-binaries.sh
+
+      - name: Build the UML kernel (libuml.so) and its stub
+        if: inputs.build_uml_kernel
+        run: |
+          set -euo pipefail
+          if [ -z "${TREE:-}" ]; then
+            echo "::warning::build_uml_kernel was requested but no UML tree was given"
+            exit 0
+          fi
+          bash images/kernel/build-uml.sh
+          APP_JNI=app/src/main/jniLibs/arm64-v8a
+          cp -f images/out/uml/linux-uml "$APP_JNI/libuml.so"
+          cp -f images/out/uml/stub_exe  "$APP_JNI/libstub.so"
+          ls -l "$APP_JNI/libuml.so" "$APP_JNI/libstub.so"
+
+          # Both are exec'd from nativeLibraryDir, so both get the static/ET_EXEC/
+          # no-interpreter check. The kernel also satisfies the 16 KB page rule
+          # (measured: LOAD alignment 0x10000); the stub does not - it is linked at
+          # 0x8, and that is the build that ships and boots, so it is checked
+          # against that page size instead of being failed for it.
+          (
+            . images/lib/common.sh
+            check_static_exec images/out/uml/linux-uml
+            check_static_exec images/out/uml/stub_exe 8
+          )
+
+          # stryker_manifest.json pins the kernel release the rest of the userland
+          # was built against, and it is what tells a phone whether the kernel it
+          # has belongs with the rootfs it has. A tree that is not that commit (or
+          # that carries local changes, which Linux spells "-dirty") produces a
+          # different UTS_RELEASE. That is not a reason to fail the run - the fix is
+          # a rootfs rebuild - but it must not pass silently either. UTS_RELEASE is
+          # a standalone string in the kernel, so it is an exact match or nothing.
+          PINNED="$(python3 -c 'import json;print(json.load(open("stryker_manifest.json"))["rootless_v2"].get("kernel_release",""))')"
+          KERNEL=images/out/uml/linux-uml
+          # The search runs on a captured string: piping strings into `grep -q` would
+          # let SIGPIPE plus pipefail report "not found" for a kernel that does
+          # contain the release.
+          RELEASES="$(strings -a "$KERNEL")"
+          if [ -z "$PINNED" ]; then
+            echo "::warning::stryker_manifest.json pins no rootless_v2.kernel_release, so the rebuilt UML kernel was not checked against the rootfs"
+          elif grep -qx "$PINNED" <<<"$RELEASES"; then
+            echo "UML kernel release $PINNED - the one stryker_manifest.json pins" >> "$GITHUB_STEP_SUMMARY"
+          elif grep -qx "$PINNED-dirty" <<<"$RELEASES"; then
+            echo "::notice::the rebuilt UML kernel is the pinned kernel ($PINNED) plus uncommitted changes in the tree, so its release string is '$PINNED-dirty'. That build cannot be reproduced from the tree alone: hand the run the tree with those changes committed."
+          else
+            FOUND="$(grep -m3 -E '^[0-9]+\.[0-9]+\.[0-9]+' <<<"$RELEASES" | tr '\n' ' ' || true)"
+            echo "::warning::the rebuilt UML kernel does not carry the kernel release stryker_manifest.json pins ('$PINNED'). Releases found in it: ${FOUND:-none}. The userland in rootfs.imgz was built for '$PINNED' - rebuild it (images/build-all.sh) and update rootless_v2.kernel_release before releasing."
+          fi
+
+      # Every engine has its own host stack and both guest kernels have their own
+      # safety net, so the Xiaomi/MIUI USB fix (images/usb-quirks.py) lives in
+      # three different sources. Each build script applies its layer and checks
+      # its own output; this is the same check over every engine at once, so a
+      # release cannot go out with an engine that was missed.
+      - name: Verify the Xiaomi/MIUI USB fix in every engine
+        run: |
+          set -euo pipefail
+          KERNEL_MARK="$(python3 images/usb-quirks.py kernel-hub --marker)"
+          QEMU_MARK="$(python3 images/usb-quirks.py qemu-host-libusb --marker)"
+          UMUSB_MARK="$(python3 images/usb-quirks.py umusb --marker)"
+          checked=0
+          verify() { # file marker engine
+            if [ ! -f "$1" ]; then
+              echo "::warning::$1 was not built in this run — the $3 fix is unverified here"
+              return 0
+            fi
+            if ! grep -aq -- "$2" "$1"; then
+              echo "::error::$1 does not carry the Xiaomi/MIUI USB fix ($3)"
+              exit 1
+            fi
+            printf '%s: %s\n' "$(basename "$1")" "$3"
+            checked=$((checked + 1))
+          }
+          verify images/out/prebuilt/qemu-system-aarch64 "$QEMU_MARK" "QEMU engine, host layer (usb-host)"
+          verify images/out/uml/umusb "$UMUSB_MARK" "UML engine, host layer (USB/IP server)"
+          verify images/out/uml/linux-uml "$KERNEL_MARK" "UML guest kernel, safety net"
+          verify images/out/vm/Image "$KERNEL_MARK" "VM guest kernel, safety net"
+          echo "$checked engine binaries carry the Xiaomi/MIUI USB fix" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Summarise what was built
+        run: |
+          set -euo pipefail
+          {
+            echo "## Binaries"
+            echo
+            echo "| file | size | sha256 |"
+            echo "|---|---|---|"
+            for f in images/out/uml/umnet images/out/uml/passt images/out/uml/umusb \
+                     images/out/bash/bash images/out/prebuilt/qemu-system-aarch64 \
+                     images/out/prebuilt/libslirp.so; do
+              [ -f "$f" ] || continue
+              printf '| `%s` | %s | `%s` |\n' "$(basename "$f")" \
+                "$(stat -c%s "$f")" "$(sha256sum "$f" | cut -d' ' -f1)"
+            done
+            echo
+            echo "### Staged into the APK sources"
+            echo
+            echo '```'
+            git status --short app/src/main/jniLibs terminal/src/main/jniLibs || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the build
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: |
+            images/out/uml/umnet
+            images/out/uml/passt
+            images/out/uml/umusb
+            images/out/uml/stub_exe
+            images/out/uml/linux-uml
+            images/out/bash/bash
+            images/out/prebuilt/qemu-system-aarch64
+            images/out/prebuilt/libslirp.so
+          if-no-files-found: error
+
+      - name: Upload the staged APK sources
+        uses: actions/upload-artifact@v4
+        with:
+          name: jniLibs
+          path: |
+            app/src/main/jniLibs
+            terminal/src/main/jniLibs
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # The commit below has to be pushable, and its history is used to
+          # describe the binaries in the commit message.
+          fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get the built binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries
+          path: images/out
+
+      - name: Get the staged jniLibs
+        uses: actions/download-artifact@v4
+        with:
+          name: jniLibs
+          path: .
+
+      - name: Check the artifacts landed where the rest of this job expects
+        run: |
+          set -euo pipefail
+          # upload-artifact keeps the least common ancestor of the paths it was
+          # given, so a change in that layout would otherwise show up much later
+          # as a confusing "no such file" in the manifest step.
+          if [ ! -f images/out/prebuilt/qemu-system-aarch64 ] \
+             && [ -f images/out/images/out/prebuilt/qemu-system-aarch64 ]; then
+            echo "::notice::flattening images/out/images/out"
+            mv images/out/images/out/* images/out/
+            rm -rf images/out/images
+          fi
+          for f in images/out/prebuilt/qemu-system-aarch64 images/out/prebuilt/libslirp.so \
+                   app/src/main/jniLibs/arm64-v8a/libumnet.so \
+                   app/src/main/jniLibs/arm64-v8a/libqemu.so; do
+            if [ ! -f "$f" ]; then
+              echo "::error::$f is missing. What did arrive:"
+              find images/out app/src/main/jniLibs terminal/src/main/jniLibs -type f | head -30
+              exit 1
+            fi
+          done
+          ls -l images/out/prebuilt images/out/uml 2>/dev/null || true
+
+      - name: Refresh stryker_manifest.json
+        if: inputs.upload_engine_assets
+        run: |
+          set -euo pipefail
+          # One --entry per asset, and only for the ones this run actually built:
+          # update-manifest.py matches entries by URL, so a file that is not here
+          # keeps the hash of the asset that is still on the release.
+          ENTRIES=()
+          add() { # TAG ASSET FILE
+            if [ -f "$3" ]; then ENTRIES+=(--entry "$1:$2=$3"); fi
+          }
+          add rootless-main qemu-system-aarch64 images/out/prebuilt/qemu-system-aarch64
+          add rootless-main libslirp.so         images/out/prebuilt/libslirp.so
+          add rootless-650  linux-uml           images/out/uml/linux-uml
+          add rootless-650  stub_exe            images/out/uml/stub_exe
+          if [ ${#ENTRIES[@]} -eq 0 ]; then
+            echo "::warning::none of the release assets were built, so the manifest was left alone"
+            exit 0
+          fi
+          python3 images/update-manifest.py stryker_manifest.json "${ENTRIES[@]}"
+          git --no-pager diff --stat stryker_manifest.json || true
+
+      - name: Upload the release assets
+        if: inputs.upload_engine_assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # The app verifies a download against the sha256/size in the manifest, so
+          # an asset is only ever replaced together with its manifest entry (the
+          # step above) and in the same run that commits both.
+          upload() { # TAG FILE...
+            local tag=$1; shift
+            local files=()
+            for f in "$@"; do
+              if [ -f "$f" ]; then files+=("$f"); fi
+            done
+            if [ ${#files[@]} -eq 0 ]; then return 0; fi
+            gh release upload "$tag" "${files[@]}" --clobber
+          }
+          upload rootless-main images/out/prebuilt/qemu-system-aarch64 images/out/prebuilt/libslirp.so
+          upload rootless-650  images/out/uml/linux-uml images/out/uml/stub_exe
+
+      - name: Check the branch the app reads the manifest from
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF_NAME" != "main" ]; then
+            echo "::warning::installed apps read stryker_manifest.json from main. This run updates '$GITHUB_REF_NAME', so the new hashes stay invisible to them until main carries that commit and its assets."
+          fi
+
+      - name: Commit
+        id: commit
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/jniLibs terminal/src/main/jniLibs stryker_manifest.json
+
+          if git diff --cached --quiet; then
+            echo "::notice::nothing changed, there is no commit to make"
+            echo "made=false" >> "$GITHUB_OUTPUT"
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git --no-pager diff --cached --stat
+
+          DETAILS="$(for f in app/src/main/jniLibs/arm64-v8a/*.so \
+                                terminal/src/main/jniLibs/arm64-v8a/*.so; do
+                        [ -f "$f" ] || continue
+                        printf '  %-34s %10s  %s\n' "$(basename "$f")" \
+                          "$(stat -c%s "$f")" "$(sha256sum "$f" | cut -d' ' -f1)"
+                      done)"
+          git commit -q -F - <<EOF
+          binaries: rebuild the native artifacts
+
+          Built by .github/workflows/binaries.yml on NDK ${{ inputs.ndk_version }},
+          QEMU ${{ inputs.qemu_ver }}, passt ${{ inputs.passt_ref }}.
+
+          $DETAILS
+          EOF
+          # Name the destination explicitly: a checkout has no upstream configured.
+          BRANCH="${GITHUB_REF_NAME:-$(git rev-parse --abbrev-ref HEAD)}"
+          if ! git push origin "HEAD:$BRANCH"; then
+            echo "::error::could not push to $BRANCH (branch protection, or the run token cannot write)."
+            echo "The built files are in the 'jniLibs' artifact of this run."
+            echo "made=true" >> "$GITHUB_OUTPUT"
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "made=true" >> "$GITHUB_OUTPUT"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Start the app release
+        if: inputs.trigger_release && steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.release_version }}
+        run: |
+          set -euo pipefail
+          if [ -n "$VERSION" ]; then
+            gh workflow run release.yml --ref "$GITHUB_REF_NAME" -f version="$VERSION"
+          else
+            gh workflow run release.yml --ref "$GITHUB_REF_NAME"
+          fi \
+            && echo "Build & Release started on $GITHUB_REF_NAME" \
+            || {
+              echo "::warning::could not start the release workflow with the run token."
+              echo "Start it by hand: Actions -> Build & Release -> Run workflow."
+              exit 0
+            }
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Binaries"
+            echo
+            echo "Built: QEMU ${{ inputs.qemu_ver }}, passt ${{ inputs.passt_ref }}, NDK ${{ inputs.ndk_version }}"
+            echo
+            echo "Committed: ${{ steps.commit.outputs.made }}, pushed: ${{ steps.commit.outputs.pushed }}"
+            echo "Engine assets uploaded: ${{ inputs.upload_engine_assets }}"
+            echo "Release workflow started: ${{ inputs.trigger_release }}"
+          } >> "$GITHUB_STEP_SUMMARY"

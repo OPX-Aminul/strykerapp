@@ -125,7 +125,11 @@ this kind have actually turned up, and it is written to be read and added to.
 
 ```
 images/
+  BINARIES.md           what every native artifact is, how it was built, and the
+                        flags/protocol the app drives it with — read it first
   build-all.sh          everything, in dependency order
+  build-binaries.sh     just the binaries the APK carries (jniLibs)
+  update-manifest.py    refresh sha256/size in stryker_manifest.json after a rebuild
   publish.sh            checksums + the stryker_manifest.json block
   lib/common.sh         identity pinning, deterministic tar/gzip
   kernel/
@@ -137,6 +141,10 @@ images/
       usb.config        what a passed-through device becomes -- shared
       wireless.config   every USB adapter -- shared by both kernels
   tools/
+    build-umnet.sh      the UML launcher (libumnet.so), bionic + static
+    build-passt.sh      passt (libpasst.so), the UML guest's network stack
+    build-qemu.sh       QEMU 11 + libslirp for the VM (libqemu.so, libslirp.so);
+                        glib, pcre2, libffi, pixman and libusb are built static
     build-umusb.sh      the USB/IP server, bionic + static, for the app
   rootfs/
     build.sh            debootstrap -> tarball + ext4 + initrd

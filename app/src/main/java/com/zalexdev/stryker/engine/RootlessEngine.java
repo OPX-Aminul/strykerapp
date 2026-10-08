@@ -21,7 +21,12 @@ import com.stryker.terminal.bridge.StrykerLog;
 public final class RootlessEngine implements GuestEngine {
 
     private static final String TAG = "RootlessEngine";
-    private static final int BOOT_TIMEOUT_MS = 150_000;
+    // TCG emulation on a phone boots this guest slowly: it needs roughly 150 s on the fastest
+    // arm64 devices and longer on older ones, and the previous 150 s cut real boots short.
+    private static final int BOOT_TIMEOUT_MS = 300_000;
+
+    /** True while attemptBoot is waiting for a guest, so status polls cannot race with it. */
+    private volatile boolean bootAttemptActive;
 
     private static final int BOOT_PING_TIMEOUT_MS = 15_000;
     private static final String PROMPT_MARK = "__STRYKER_ID__";
@@ -213,6 +218,15 @@ public final class RootlessEngine implements GuestEngine {
     }
 
     private String attemptBoot(GuestEngine.BootListener listener) {
+        bootAttemptActive = true;
+        try {
+            return attemptBootOnce(listener);
+        } finally {
+            bootAttemptActive = false;
+        }
+    }
+
+    private String attemptBootOnce(GuestEngine.BootListener listener) {
         try {
             killAndAwait(12_000);
             clearStaleSockets();
@@ -257,8 +271,10 @@ public final class RootlessEngine implements GuestEngine {
             }
             java.util.List<String> tail = tailLog(200);
             int stage = VmBootStage.detect(tail);
+            String transport = GuestSsh.lastFailure();
             return "Boot timed out after " + (BOOT_TIMEOUT_MS / 1000) + "s — "
-                    + BootDiagnosis.reason(tail, stage);
+                    + BootDiagnosis.reason(tail, stage)
+                    + (transport == null ? "" : " (the ssh client's last answer: " + transport + ")");
         } catch (java.io.IOException e) {
             StrykerLog.e(TAG, "start failed", e);
             String msg = e.getMessage() == null ? "" : e.getMessage();
@@ -566,6 +582,12 @@ public final class RootlessEngine implements GuestEngine {
                 else if (marker == 2 && after < 0) after = blocks;
             }
 
+            if (!done && !hasTool) {
+                GuestExec.logToStore("the VM disk filesystem was not expanded — the guest did not "
+                        + "answer (ssh is not usable right now); it retries on the next boot");
+                return;
+            }
+
             boolean grew = before > 0 && after > before;
             if (grew || nothingToDo) {
                 prefs.putBoolean(VmSpecs.K_RESIZE_PENDING, false);
@@ -592,8 +614,16 @@ public final class RootlessEngine implements GuestEngine {
         try {
             ArrayList<String> have = GuestExec.run(
                     "[ -f " + ATH9K_HTC_FW + " ] && echo __FW_OK__ || echo __FW_MISSING__");
+            boolean answered = false;
             for (String l : have) {
-                if (l != null && l.contains("__FW_OK__")) return;
+                if (l == null) continue;
+                if (l.contains("__FW_OK__")) return;
+                if (l.contains("__FW_MISSING__")) answered = true;
+            }
+            if (!answered) {
+                GuestExec.logToStore("cannot tell whether the ath9k_htc firmware is installed — the "
+                        + "guest did not answer (ssh is not usable right now); it retries on the next boot");
+                return;
             }
             GuestExec.logToStore("guest is missing " + ATH9K_HTC_FW
                     + " — installing firmware-ath9k-htc (ath9k_htc dongles fail with "
@@ -603,11 +633,19 @@ public final class RootlessEngine implements GuestEngine {
                     + ">/dev/null 2>&1; true");
             ArrayList<String> after = GuestExec.run(
                     "[ -f " + ATH9K_HTC_FW + " ] && echo __FW_OK__ || echo __FW_MISSING__");
+            boolean checkedAfter = false;
             for (String l : after) {
-                if (l != null && l.contains("__FW_OK__")) {
+                if (l == null) continue;
+                if (l.contains("__FW_OK__")) {
                     GuestExec.logToStore("ath9k_htc firmware installed — replug the dongle to retry");
                     return;
                 }
+                if (l.contains("__FW_MISSING__")) checkedAfter = true;
+            }
+            if (!checkedAfter) {
+                GuestExec.logToStore("could not check the ath9k_htc firmware again — the guest did not "
+                        + "answer (ssh is not usable right now)");
+                return;
             }
             GuestExec.logToStore("could not install firmware-ath9k-htc (no network in the VM?)");
         } catch (Throwable ignored) {
@@ -963,7 +1001,10 @@ public final class RootlessEngine implements GuestEngine {
     @Override
     public GuestEngine.State statusBlocking() {
         if (isRunning()) {
-            if (GuestExec.ping(1500)) {
+            // A guest that answers mid-boot is not booted yet: attemptBoot still has to see it
+            // answer, and it may still decide to kill this VM and retry with the safe profile.
+            // Marking it booted here started the post-boot work against a VM being torn down.
+            if (!bootAttemptActive && GuestExec.ping(1500)) {
                 lastGuestOk = System.currentTimeMillis();
                 markBooted();
                 return GuestEngine.State.READY;

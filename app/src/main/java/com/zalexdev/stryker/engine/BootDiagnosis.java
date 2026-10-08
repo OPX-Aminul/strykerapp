@@ -16,6 +16,10 @@ public final class BootDiagnosis {
         if (lower.contains("rss-counter")) return true;
         if (lower.contains("dev fd0") || lower.contains("floppy")) return true;
         if (lower.contains("i8042")) return true;
+        // UML prints this and then boots on ("memory hotplug won't be supported"), so it is
+        // never the reason a guest died and must not be offered as one.
+        if (lower.contains("madv_remove")) return true;
+        if (lower.contains("can't release memory to the host")) return true;
         return lower.contains("crng init");
     }
 
@@ -38,6 +42,7 @@ public final class BootDiagnosis {
         boolean noSpace = false;
         boolean oom = false;
         String passt = null;
+        String seccompKill = null;
 
         for (String raw : tail) {
             if (raw == null) continue;
@@ -47,9 +52,14 @@ public final class BootDiagnosis {
             if (lower.contains("attempted to kill init")) killedInit = true;
             if (lower.contains("no space left")) noSpace = true;
             if (lower.contains("out of memory") || lower.contains("oom-kill")) oom = true;
+            if (lower.contains("bad system call") || lower.contains("sigsys")
+                    || lower.contains("killed by signal 31")) {
+                if (seccompKill == null) seccompKill = raw.trim();
+            }
             if (lower.startsWith("passt:") || lower.contains("passt exited")
+                    || lower.contains("umnet:")
                     || (lower.contains("couldn't") && lower.contains("port"))) {
-                if (passt == null && lower.contains("couldn't")) passt = raw.trim();
+                if (passt == null) passt = raw.trim();
             }
         }
 
@@ -62,6 +72,12 @@ public final class BootDiagnosis {
             return "the host refused the guest's first system call. This phone has no seccomp"
                     + " support for the guest kernel and no working ptrace path, so there is no"
                     + " way to run a guest on it.";
+        }
+        if (seccompKill != null) {
+            return "this phone's seccomp policy answered a syscall with SIGSYS (signal 31) and killed"
+                    + " the guest (" + seccompKill + "). The guest kernel and the networking helper it"
+                    + " is started with both need syscall 436 (close_range), which this device blocks,"
+                    + " so the UML engine cannot run here — the QEMU engine does not need it.";
         }
         if (noSpace) {
             return "the guest ran out of disk. Free some space on the phone and start it again —"
@@ -106,6 +122,7 @@ public final class BootDiagnosis {
             }
         }
 
+        if (stage >= VmBootStage.AGENT) return stageNote(stage);
         return stage >= 0
                 ? stageNote(stage) + ", and nothing on the console says why"
                 : "nothing on the console says why";
@@ -120,7 +137,8 @@ public final class BootDiagnosis {
             case VmBootStage.SERVICES:
                 return "the guest's services started but its agent never answered";
             case VmBootStage.AGENT:
-                return "the guest finished booting but nothing answered on its SSH port";
+                return "the guest finished booting (its console shows its login prompt) but the app"
+                        + " could not run a command in it over ssh";
             case VmBootStage.READY:
                 return "the guest reported itself ready";
             default:

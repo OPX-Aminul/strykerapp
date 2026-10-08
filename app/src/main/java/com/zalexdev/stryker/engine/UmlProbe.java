@@ -93,6 +93,7 @@ public final class UmlProbe {
             ProcessBuilder pb = new ProcessBuilder(command(kernel, stub));
             pb.directory(uml.base());
             pb.redirectErrorStream(true);
+            pb.environment().put("HOME", uml.base().getAbsolutePath());
             String tmp = uml.fallbackTempDir();
             if (tmp != null) pb.environment().put("TMPDIR", tmp);
 

@@ -38,7 +38,7 @@ if command -v ccache >/dev/null 2>&1 && [ "${CCACHE:-1}" = 1 ]; then
 	export CROSS_COMPILE=$CROSS
 fi
 
-need make curl xz tar bc flex bison sha256sum
+need make curl xz tar bc flex bison sha256sum python3
 command -v "${CROSS_BARE}gcc" >/dev/null \
 	|| die "no ${CROSS_BARE}gcc (apt install gcc-aarch64-linux-gnu), or set CROSS_COMPILE="
 
@@ -54,6 +54,8 @@ if [ -n "${TREE:-}" ]; then
 	info "kernel: $(make -C "$SRC" -s kernelversion 2>/dev/null)"
 	if [ -n "$(git -C "$SRC" status --porcelain 2>/dev/null | head -1)" ]; then
 		warn "the tree has uncommitted changes; this build is not reproducible"
+		warn "  (the Xiaomi/MIUI USB patch this repo applies to hub.c is one of"
+		warn "  them, so a rerun of an already-patched tree always reports this)"
 	fi
 elif [ ! -d "$SRC" ]; then
 	if [ ! -f "$ARCH_DIR/$tarball" ]; then
@@ -86,6 +88,17 @@ elif [ ! -d "$SRC" ]; then
 	tar -C "$ARCH_DIR" -xf "$ARCH_DIR/$tarball"
 fi
 [ -f "$SRC/Makefile" ] || die "no kernel source at $SRC"
+
+# layer 2 of the Xiaomi/MIUI USB fix (images/usb-quirks.py): the guest kernel's
+# own safety net in hub_port_init(). The host layer (QEMU's usb-host) corrects
+# the speed before the guest sees it; this catches what the guest latched before
+# that correction existed. Both kernels this repo ships carry it: this one and
+# build-uml.sh's. Old kernel shapes (5.x through 6.1) are handled too.
+QUIRKS=$HERE/../usb-quirks.py
+[ -f "$QUIRKS" ] || die "no images/usb-quirks.py — the Xiaomi/MIUI USB fix is applied from there"
+HUB=$SRC/drivers/usb/core/hub.c
+[ -f "$HUB" ] || die "no drivers/usb/core/hub.c under $SRC"
+python3 "$QUIRKS" kernel-hub "$HUB"
 
 mkdir -p "$O"
 
@@ -151,6 +164,10 @@ rm -f "$DEST/modules/lib/modules/$release/build" \
 
 cp -f "$O/arch/arm64/boot/Image" "$DEST/Image"
 cp -f "$O/.config" "$DEST/Image.config"
+
+# The guest safety net has to be in the kernel we ship, not only in the source
+# it was meant to come from (the dev_info string survives the strip: .rodata).
+check_marker "$DEST/Image" "$(python3 "$QUIRKS" kernel-hub --marker)"
 printf '%s\n' "$release" > "$DEST/kernel.release"
 printf '%s\n' "$stamp" > "$DEST/kernel.source"
 record_artifact "$DEST/Image"

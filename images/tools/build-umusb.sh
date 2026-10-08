@@ -19,6 +19,16 @@ SRC=$TREE/tools/um-arm64/harness/umusb.c
 [ -f "$SRC" ] || SRC=$TREE/harness/umusb.c
 [ -f "$SRC" ] || die "no umusb.c under $TREE"
 
+# The Xiaomi/MIUI USB fix, UML engine's host layer (images/usb-quirks.py).
+# umusb is the USB/IP server behind the UML engine, so the speed it announces is
+# the speed the guest's vhci_hcd hands to the guest's hub: the same wrong speed
+# QEMU's usb-host reports on MIUI arrives here by a different road, and gets the
+# same correction. The guest kernel's own safety net is kernel/build-uml.sh.
+QUIRKS=$HERE/../usb-quirks.py
+[ -f "$QUIRKS" ] || die "no images/usb-quirks.py — the Xiaomi/MIUI USB fix is applied from there"
+need python3
+python3 "$QUIRKS" umusb "$SRC"
+
 API=${API:-30}
 PAGE=${PAGE:-16384}
 O=${O:-$WORK_DIR/umusb}
@@ -73,6 +83,10 @@ else
 fi
 
 "$TOOL/llvm-strip" "$O/umusb" 2>/dev/null || warn "llvm-strip failed; shipping unstripped"
+
+# The host-side fix has to be in the binary we ship, not only in the source it
+# was meant to come from (the string survives strip: it is .rodata, not symbols).
+check_marker "$O/umusb" "$(python3 "$QUIRKS" umusb --marker)"
 
 leak=$(grep -a -o -E '/(home|root|Users)/[A-Za-z0-9._-]+' "$O/umusb" | sort -u || true)
 [ -z "$leak" ] || die "the binary carries build-machine paths:

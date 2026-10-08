@@ -57,9 +57,29 @@ public final class GuestExec {
         new Thread(() -> run(cmd), "guest-killjob").start();
     }
 
+    private static final long DUPLICATE_WINDOW_MS = 10_000L;
+    private static volatile String lastFailure;
+    private static volatile long lastFailureAt;
+
+    /**
+     * One dead transport makes every caller fail at once. Report the first failure and stay quiet
+     * about the repeats instead of filling the log with the same line.
+     */
+    private static boolean alreadyReported(String what) {
+        long now = System.currentTimeMillis();
+        if (what.equals(lastFailure) && now - lastFailureAt < DUPLICATE_WINDOW_MS) {
+            lastFailureAt = now;
+            return true;
+        }
+        lastFailure = what;
+        lastFailureAt = now;
+        return false;
+    }
+
     public static ArrayList<String> run(String command) {
         ArrayList<String> out = new ArrayList<>();
         Session s = null;
+        boolean transportFailed = false;
         try {
             s = open(command);
             s.setReadTimeout(READ_TIMEOUT_MS);
@@ -77,13 +97,17 @@ public final class GuestExec {
             logToStore("guest command timed out after " + (READ_TIMEOUT_MS / 1000)
                     + "s with no output (hung?) · " + shortCmd(command));
         } catch (IOException e) {
+            transportFailed = true;
             StrykerLog.w(TAG, "run failed: " + e.getMessage());
-            logToStore("guest exec failed — no ssh session to the guest on :"
-                    + RootlessPaths.HOST_SSH_PORT + " (" + e.getMessage() + ") · " + shortCmd(command));
+            String what = "guest exec failed — no ssh session to the guest on :"
+                    + RootlessPaths.HOST_SSH_PORT + " (" + e.getMessage() + ")";
+            if (!alreadyReported(what)) {
+                logToStore(what + " · " + shortCmd(command));
+            }
         } finally {
             if (s != null) s.close();
         }
-        if (out.isEmpty() && (s == null || s.exitCode != 0)) {
+        if (!transportFailed && out.isEmpty() && (s == null || s.exitCode != 0)) {
             StrykerLog.w(TAG, "guest command produced no output: " + shortCmd(command));
         }
         return out;

@@ -11,23 +11,30 @@ rm -f "$OUT_DIR/artifacts.tsv"
 
 started=$(date -u +%s)
 
-say "1/4  the VM kernel"
+say "1/5  the binaries the APK carries"
+if ! bash "$HERE/build-binaries.sh"; then
+	warn "the APK-side binaries did not all build (see above). They are separate"
+	warn "artifacts, so the images below are unaffected. Set SKIP_<NAME>=1 to skip"
+	warn "one, or TREE= to point at the arm64 UML port tree for umnet and umusb."
+fi
+
+say "2/5  the VM kernel"
 bash "$HERE/kernel/build-vm.sh"
 
 if [ "${SKIP_UML:-0}" = 1 ]; then
-	say "2/4  the UML kernel -- skipped (SKIP_UML=1)"
+	say "3/5  the UML kernel -- skipped (SKIP_UML=1)"
 else
-	say "2/4  the UML kernel"
+	say "3/5  the UML kernel"
 	if ! bash "$HERE/kernel/build-uml.sh"; then
 		warn "the UML kernel did not build. The VM engine's artifacts are"
 		warn "unaffected; set SKIP_UML=1 to stop trying, or read the error above."
 	fi
 fi
 
-say "3/4  the Debian system"
+say "4/5  the Debian system"
 bash "$HERE/rootfs/build.sh"
 
-say "4/4  the out-of-tree driver packages"
+say "5/5  the out-of-tree driver packages"
 if ! bash "$HERE/drivers/add-driver.sh" all; then
 	warn "some drivers did not build -- see above. These are optional packages,"
 	warn "not part of any image, so the rest of the release is still complete."

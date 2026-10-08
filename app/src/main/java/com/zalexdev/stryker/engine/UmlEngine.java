@@ -135,8 +135,9 @@ public final class UmlEngine implements GuestEngine {
         if ("tmpfs".equals(type)) return null;
         return "the kernel backs guest memory with a file in " + dir + ", which is on "
                 + (type == null ? "a filesystem" : type) + " rather than tmpfs, and only tmpfs "
-                + "supports MADV_REMOVE. This device gives apps no writable tmpfs, so UML cannot "
-                + "run here; the QEMU engine does not need it.";
+                + "supports MADV_REMOVE. This device gives apps no writable tmpfs, so the guest "
+                + "cannot hand memory back to the phone (memory hotplug stays off) — the QEMU "
+                + "engine does not need a tmpfs at all.";
     }
 
     public File rootfs() { return RootlessPaths.rootfs(app); }
@@ -501,8 +502,8 @@ public final class UmlEngine implements GuestEngine {
                 if (!isRunning()) {
                     Integer code = exitCode();
                     logConsoleTail();
-                    return fail(listener, "the guest exited"
-                            + (code != null ? " (" + code + ")" : "") + ": " + lastConsoleProblem());
+                    return fail(listener, "the guest exited" + describeExit(code)
+                            + ": " + lastConsoleProblem());
                 }
                 if (GuestSsh.guestReported()) {
                     if (listener != null && i % 5 == 0) listener.onBootLine("guest up, opening ssh");
@@ -534,8 +535,33 @@ public final class UmlEngine implements GuestEngine {
         GuestExec.logToStore(sb.toString());
     }
 
+    /**
+     * A guest that was killed by a signal exits with 128 + the signal number, so 159 is
+     * "killed by SIGSYS" rather than an exit status of its own.
+     */
+    private static String describeExit(Integer code) {
+        if (code == null) return "";
+        if (code > 128 && code <= 192) {
+            int sig = code - 128;
+            return " (" + code + " = 128 + signal " + sig + ", " + signalName(sig) + ")";
+        }
+        return " (" + code + ")";
+    }
+
+    private static String signalName(int sig) {
+        switch (sig) {
+            case 2:  return "SIGINT";
+            case 6:  return "SIGABRT";
+            case 9:  return "SIGKILL";
+            case 11: return "SIGSEGV";
+            case 15: return "SIGTERM";
+            case 31: return "SIGSYS";
+            default: return "signal " + sig;
+        }
+    }
+
     private boolean fail(BootListener listener, String reason) {
-        if (reason != null && reason.contains("MADV_REMOVE")) {
+        if (reason != null && reason.contains("MADV_REMOVE") && !reason.contains("SIGSYS")) {
             String hint = memoryBackingHint();
             if (hint != null) reason = reason + " — " + hint;
         }
@@ -628,6 +654,10 @@ public final class UmlEngine implements GuestEngine {
 
         ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.directory(base());
+        // UML keeps its umid directory under $HOME; with no HOME it warns
+        // ("make_uml_dir: no value in environment for $HOME") and invents a new random umid
+        // on every start, which also leaves the old umid directories behind.
+        pb.environment().put("HOME", base().getAbsolutePath());
         String ownTmp = fallbackTempDir();
         if (ownTmp != null) {
             pb.environment().put("TMPDIR", ownTmp);
