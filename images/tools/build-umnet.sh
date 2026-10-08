@@ -121,7 +121,20 @@ check_no_build_paths "$O/umnet"
 # These are the options UmlEngine.buildCommand() drives; a build without one of
 # them is not the launcher the app knows how to start.
 for flag in --passt --fwd --mac --gw --iface --isolate-loopback --verbose; do
-	grep -aq -- "$flag" "$O/umnet" || die "the built umnet has no $flag option"
+	grep -aq -- "$flag" "$O/umnet" || die "the built umnet has no $flag option.
+  UmlEngine.buildCommand() passes it, and the launcher the app ships with
+  accepts it, so this build is not a drop-in replacement. The port tree as
+  published cannot make one: tools/um-arm64/harness/umnet.c has no --fwd (nor
+  --isolate-loopback) anywhere, and it answers an option it does not know with
+  'umnet: unknown option %s' and exit 2 - so a launcher built from it would
+  refuse to start on every UML boot. The shipped libumnet.so does carry both
+  (measured: its usage line reads \"[--passt PATH] [--mac MAC] [--fwd SPEC]\"),
+  so it was built from a tree that was never pushed. Until that revision is
+  available, keep the shipped binary: SKIP_UMNET=1 leaves the committed
+  jniLibs/arm64-v8a/libumnet.so, which is byte-identical to the released one.
+  --fwd is not part of the Xiaomi/MIUI fix, so nothing that fix needs is lost:
+  the UML engine's USB layer is build-umusb.sh and its guest layer is
+  kernel/build-uml.sh."
 done
 info "all app-facing umnet flags are present"
 

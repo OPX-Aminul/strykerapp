@@ -64,6 +64,21 @@ on:
         required: false
         default: 'r27c'
         type: string
+      skip_umnet:
+        description: >-
+          Leave jniLibs/arm64-v8a/libumnet.so as it is, on by default. The arm64
+          UML port tree that is published cannot build a umnet the app can drive:
+          its harness/umnet.c has no --fwd option (nor --isolate-loopback) and
+          answers an unknown option with 'unknown option' and exit 2, while
+          UmlEngine.buildCommand() always passes --fwd. The shipped libumnet.so
+          does support both, so it came from a tree that was never pushed, and
+          the copy committed in this repository is byte-identical to it. --fwd is
+          not part of the Xiaomi/MIUI fix, so skipping this rebuild loses
+          nothing; turn it off only once a umnet.c that accepts --fwd is in the
+          tree - the build stops with that explanation if it is not.
+        required: false
+        default: true
+        type: boolean
       build_uml_kernel:
         description: >-
           Also build the UML kernel (libuml.so) and its stub. On by default: the
@@ -183,7 +198,12 @@ jobs:
           set -euo pipefail
           if [ -z "${TREE:-}" ]; then
             echo "::notice::no UML tree in this run: umnet and umusb are skipped"
-            export SKIP_UMNET=1 SKIP_UMUSB=1
+            export SKIP_UMUSB=1
+            export SKIP_UMNET=1
+          fi
+          if [ "${{ inputs.skip_umnet }}" = "true" ]; then
+            echo "::notice::umnet is not rebuilt: the published port tree cannot build one that accepts --fwd, and the committed libumnet.so is the released one"
+            export SKIP_UMNET=1
           fi
           bash images/build-binaries.sh
 
