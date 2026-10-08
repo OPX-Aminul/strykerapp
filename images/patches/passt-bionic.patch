@@ -1,0 +1,56 @@
+diff --git a/ip.h b/ip.h
+index aab9b86..a7f5152 100644
+--- a/ip.h
++++ b/ip.h
+@@ -64,6 +64,14 @@
+ 		.daddr		= IN6ADDR_ANY_INIT,			\
+ 	}
+ 
++/*
++ * bionic's <netinet/ip.h> chain reaches <linux/ipv6.h>, which defines both of
++ * the structures below; glibc's headers leave them to the program. The port
++ * builds against the NDK, where the two definitions collide. _UAPI_IPV6_H is
++ * the guard of that header (bionic keeps the kernel's), so passt's copies are
++ * only used where nothing else has defined them.
++ */
++#ifndef _UAPI_IPV6_H
+ struct ipv6hdr {
+ #pragma GCC diagnostic push
+ #pragma GCC diagnostic ignored "-Wpedantic"
+@@ -92,6 +100,7 @@ struct ipv6_opt_hdr {
+ 	 * TLV encoded option data follows.
+ 	 */
+ } __attribute__((packed));	/* required for some archs */
++#endif /* !_UAPI_IPV6_H */
+ 
+ /**
+  * ip6_set_flow_lbl() - Set flow label in an IPv6 header
+diff --git a/tcp.c b/tcp.c
+index 3b78d2e..d96f544 100644
+--- a/tcp.c
++++ b/tcp.c
+@@ -327,7 +327,13 @@
+  */
+ #define OPTLEN_MAX (((1UL << 4) - 1 - 5) * 4UL)
+ 
+-#ifndef __USE_MISC
++/*
++ * __USE_MISC is glibc's: with it <netinet/tcp.h> already carries these. bionic
++ * has no <features.h>, but its <netinet/tcp.h> reaches <linux/tcp.h>, which
++ * defines the same enum and structure -- so only add them when neither of the
++ * two has. (_UAPI_LINUX_TCP_H is that header's guard.)
++ */
++#if !defined(__USE_MISC) && !defined(_UAPI_LINUX_TCP_H)
+ /* From Linux UAPI, missing in netinet/tcp.h provided by musl */
+ struct tcp_repair_opt {
+ 	__u32	opt_code;
+@@ -764,7 +770,8 @@ static void tcp_rtt_dst_check(const struct tcp_tap_conn *conn,
+ 	for (i = 0; i < LOW_RTT_TABLE_SIZE; i++) {
+ 		if (inany_equals(&tapside->oaddr, low_rtt_dst + i))
+ 			return;
+-		if (hole == -1 && IN6_IS_ADDR_UNSPECIFIED(low_rtt_dst + i))
++		if (hole == -1 &&
++		    IN6_IS_ADDR_UNSPECIFIED(&(low_rtt_dst + i)->a6))
+ 			hole = i;
+ 	}
+ 

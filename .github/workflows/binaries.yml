@@ -136,7 +136,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             meson ninja-build autoconf automake libtool pkg-config \
-            bzip2 xz-utils flex bison gperf gettext zip unzip
+            bzip2 xz-utils flex bison gperf gettext zip unzip patch
           python3 -m pip install --user --upgrade "meson>=1.5" ninja
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           meson --version

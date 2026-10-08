@@ -4,6 +4,13 @@ set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 . "$HERE/../lib/common.sh"
 
+# The NDK's headers are bionic's, not glibc's, and passt assumes glibc in a few
+# places its own Makefile does not cover. Two files carry the fix -- a patch for
+# the source tree and a header force-included ahead of every translation unit --
+# and the "bionic fixups" step below applies both.
+PATCHES=$HERE/../patches
+PASST_COMPAT=$PATCHES/passt-bionic.h
+
 # passt is the userspace network stack the UML guest reaches the phone through.
 # umnet starts it ("umnet: exec passt", "./passt" in its strings) and forwards
 # 127.0.0.1:2222 to the guest's 22, which is how the app's ssh session and the
@@ -78,17 +85,44 @@ info "commit  $COMMIT"
 [ "$COMMIT" = "not a git checkout" ] && [ -z "$PASST_TARBALL" ] \
 	&& die "could not resolve a commit for $PASST_REF — pin PASST_REF to a tag or a sha"
 
+say "bionic fixups"
+[ -f "$PASST_COMPAT" ] || die "no $PASST_COMPAT"
+[ -f "$PATCHES/passt-bionic.patch" ] || die "no $PATCHES/passt-bionic.patch"
+need patch
+# This script can be run twice on the same checkout (the clone above is reused
+# when it is already there), and the patch adds lines rather than replacing
+# them: start from what the ref actually has, or the second run applies it
+# twice and the tree no longer builds.
+if [ -d "$SRC/.git" ]; then
+	git -C "$SRC" checkout --quiet -- .
+fi
+if ! patch -p1 -d "$SRC" --forward -i "$PATCHES/passt-bionic.patch" \
+		>"$O/patch.log" 2>&1; then
+	cat "$O/patch.log"
+	die "images/patches/passt-bionic.patch does not apply to $PASST_REF.
+  It is written against defc25b; re-derive it if PASST_REF moved."
+fi
+# A patch that applies is not a patch that did what it says: check each change
+# landed, because a skipped hunk is a build that dies later in a header.
+grep -q "_UAPI_IPV6_H" "$SRC/ip.h" || die "ip.h was not guarded"
+grep -q "_UAPI_LINUX_TCP_H" "$SRC/tcp.c" || die "tcp.c was not guarded"
+grep -q "IN6_IS_ADDR_UNSPECIFIED(&(low_rtt_dst + i)->a6)" "$SRC/tcp.c" \
+	|| die "the IN6_IS_ADDR_UNSPECIFIED() call site was not adjusted"
+info "ip.h and tcp.c patched, $PASST_COMPAT force-included"
+
 # passt's own Makefile: `make passt` links every .c except the pasta/qrap entry
 # points. It wants GNU userspace headers (netlink, seccomp, ethernet, arp), which
 # the NDK ships in its sysroot; if one is missing the compile below names it.
-# Three things can put a build-machine path in here: the source tree, the NDK's
-# sysroot headers (every #include lands in the debug line table) and
-# DW_AT_comp_dir, the compiler's working directory. The shipped libpasst.so
-# carries none of them and check_no_build_paths() below requires that, so all
-# three are mapped -- the source tree alone leaves /home/runner/... behind.
+# Four things can put a build-machine path in here: the source tree, the NDK's
+# sysroot headers (every #include lands in the debug line table), the
+# compatibility header from images/patches, and DW_AT_comp_dir, the compiler's
+# working directory. The shipped libpasst.so carries none of them and
+# check_no_build_paths() below requires that, so all four are mapped -- the
+# source tree alone leaves /home/runner/... behind.
 CFLAGS_EXTRA=(-O2 -fno-strict-aliasing -static
               -ffile-prefix-map="$SRC=."
               -ffile-prefix-map="$NDK=/ndk"
+              -ffile-prefix-map="$PATCHES=."
               -ffile-prefix-map="$PWD=."
               -fdebug-compilation-dir=.
               "-Wl,-z,max-page-size=$PAGE")
@@ -193,12 +227,16 @@ say "building"
 # by SIGSYS at its first syscall inside the app. PAGE_SIZE is baked in from the
 # build host's getconf for the same reason, and a value smaller than the target's
 # under-aligns what passt aligns with it.
+#
+# CPPFLAGS force-includes the bionic compatibility header: it covers what a
+# source patch cannot (MAXNS/MAXDNSRCH, struct udphdr in checksum.c,
+# vring_need_event, the PRI* macros).
 make -C "$SRC" -j"$(nproc)" passt \
 	CC="$TOOL/clang --target=aarch64-linux-android$API" \
 	ARCH=aarch64 TARGET=aarch64-linux-android \
 	VERSION="$PASST_VERSION-bionic" \
 	CFLAGS="${CFLAGS_EXTRA[*]}" \
-	CPPFLAGS="-UPAGE_SIZE -DPAGE_SIZE=$PAGE" \
+	CPPFLAGS="-UPAGE_SIZE -DPAGE_SIZE=$PAGE -include $PASST_COMPAT" \
 	LDFLAGS="-static -Wl,-z,max-page-size=$PAGE $O/close_range-shim.o" \
 	LDLIBS="" \
 	|| die "passt did not build. The usual causes, in order:
@@ -233,6 +271,8 @@ record_artifact "$DEST/passt"
 	printf 'ndk      %s\n' "$NDK"
 	printf 'api      %s\n' "$API"
 	printf 'debug    %s\n' "$DEBUG"
+	printf 'fixups   images/patches/passt-bionic.patch\n'
+	printf '         images/patches/passt-bionic.h (-include)\n'
 } > "$OUT_DIR/passt.txt"
 
 say "done"
