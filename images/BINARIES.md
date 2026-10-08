@@ -232,9 +232,9 @@ the app does not exec it — `libuml.so` hands it to the kernel as `stub_exe=`,
 and the kernel maps it itself, so an alignment below the page size is legal
 there (and would not be for anything the linker loads). The checks in
 `lib/common.sh` are applied to the binaries the app does exec, and the new
-scripts keep 16 KB pages (and
-`build-umnet.sh`/`build-passt.sh` keep debug info, matching what ships — useful
-for `keepDebugSymbols`, since an unstripped `libqemu.so`… see below).
+scripts keep 16 KB pages. `build-umnet.sh` and `build-passt.sh` also keep debug
+info, matching what ships, which is what `keepDebugSymbols` is for — but it only
+applies to those two, as the next paragraph explains.
 
 One correction to an earlier note in this repository: `libqemu.so` carries **no**
 `.debug_info`/`.symtab` — 43.8 MB is QEMU's own code. The `keepDebugSymbols`
@@ -258,7 +258,7 @@ statically, which is where a first CI run is most likely to need iteration; the
 Xiaomi/MIUI USB fix is applied by `tools/build-qemu.sh`, `tools/build-umusb.sh`,
 `kernel/build-uml.sh` and `kernel/build-vm.sh` through `images/usb-quirks.py`,
 which is the one file to update if any of those sources changes shape; the
-the `umnet` source lives in the UML port tree that `build-uml.sh` and
+`umnet` source lives in the UML port tree that `build-uml.sh` and
 `build-umusb.sh` already take as `TREE=` (the port is not a public repository,
 so CI needs it handed to it as a repository or a tarball); and none of these
 scripts can be executed in a workspace without an NDK and network access — they
