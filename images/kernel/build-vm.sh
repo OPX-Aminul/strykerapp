@@ -155,6 +155,27 @@ make -C "$SRC" O="$O" -j"$JOBS" Image modules
 release=$(make -C "$SRC" O="$O" -s kernelrelease)
 info "kernel release: $release"
 
+# The rootfs this kernel boots was built (and its modules installed) for one
+# specific release, and stryker_manifest.json names it: rootless_v2.kernel_release,
+# the same value the app compares the guest's uname against. A kernel built from
+# a different tree - or from the kernel.org tarball this script falls back to
+# when no UML port tree is given - produces a different UTS_RELEASE, and then the
+# modules in the rootfs are the only ones that load and anything built out of
+# tree does not. That is worth failing on rather than discovering on a phone.
+MANIFEST=$HERE/../../stryker_manifest.json
+PINNED=
+[ -f "$MANIFEST" ] \
+	&& PINNED=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["rootless_v2"].get("kernel_release",""))' "$MANIFEST" 2>/dev/null || echo "")
+if [ -n "$PINNED" ] && [ "$release" != "$PINNED" ]; then
+	warn "this kernel is $release but the rootfs (and stryker_manifest.json) pin"
+	warn "  $PINNED"
+	warn "  Its modules are the ones that will load; a kernel the rootfs was not"
+	warn "  built against will not match. Point TREE at the port tree the rootfs"
+	warn "  came from (the arm64 UML port, which is also the 7.2 kernel), or read"
+	warn "  this as a deliberate engine bump and update rootless_v2.kernel_release"
+	warn "  and rebuild the rootfs with images/rootfs/build.sh."
+fi
+
 say "collecting"
 rm -rf "$DEST/modules"
 make -C "$SRC" O="$O" -j"$JOBS" INSTALL_MOD_PATH="$DEST/modules" \

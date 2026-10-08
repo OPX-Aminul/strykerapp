@@ -49,7 +49,11 @@ on:
         default: '11.0.2'
         type: string
       ndk_version:
-        description: 'NDK release the artifacts are built with.'
+        description: >-
+          NDK the artifacts are built with. r27c is what the shipped libuml.so,
+          libpasst.so and libumnet.so were built with; the shipped libqemu.so and
+          libslirp.so carry clang 21 instead, so a newer NDK here is what makes
+          the QEMU build match the released one. Everything else uses this too.
         required: false
         default: 'r27c'
         type: string

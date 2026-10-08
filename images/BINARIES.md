@@ -272,3 +272,149 @@ binaries, 20 cases including the negative ones (QEMU must fail the static check,
 `libumusb.so` must not match umnet's markers, and so on). All 20 behave as
 tabulated above. The build recipes themselves have not been executed — that is
 what the workflow run is for.
+
+## 7. Audit against the published artifacts
+
+The tables above were measured on the binary *shipped in the APK*. This section
+is the same measurement run against what the release tags and the rootfs
+actually serve — `v6.5.2` (the APK), `rootless-main`, `rootless-650` — so the
+build scripts can be compared with the ground truth instead of with each other.
+
+### 7.1 The same file, under both names
+
+| file in the APK | sha256 | release asset | sha256 | |
+|---|---|---|---|---|
+| `libqemu.so` | `2a87f531…` | `rootless-main/qemu-system-aarch64` | `2a87f531…` | **byte-identical** |
+| `libslirp.so` | `22637242…` | `rootless-main/libslirp.so` | `22637242…` | **byte-identical** |
+| `libuml.so` | `fab7a2b6…` | `rootless-650/linux-uml` | `c091ecda…` | different (see 7.2) |
+| `libstub.so` | `fa83d4c9…` | `rootless-650/stub_exe` | `83f51f7c…` | different (see 7.2) |
+
+The APK and the release are therefore the same build for the QEMU engine, and
+the release copies are the ones the app also downloads on an OTA install. The
+rootfs, `Image` and `initrd.img` are release-only; the sha256 of every one of
+them matches the entry `stryker_manifest.json` publishes for it, which is what
+the app verifies before it will use a download.
+
+### 7.2 The two UML divergences, named
+
+`strings` on the two kernels gives the whole story:
+
+| kernel | `uname -r` it carries |
+|---|---|
+| `libuml.so` (APK, the one users run) | `7.2.0-rc4-g8897487c5223-dirty` |
+| `rootless-650/linux-uml` | `7.2.0-rc4-g8897487c5223` |
+| `rootless-650/Image` (the VM kernel) | `7.2.0-rc4-g8897487c5223 … preempt modversions` |
+| `rootless-main/Image` (the older block) | `6.12.94+deb13-arm64` — a **Debian** kernel |
+
+The APK's kernel was built from the port tree **with uncommitted changes**
+(`-dirty`), and its string set differs from the release copy's, so the two are
+the same commit and the same config family but not the same build. That is why
+`stryker_manifest.json` pins `rootless_v2.kernel_release` =
+`7.2.0-rc4-g8897487c5223` (the clean release, which is what the rootfs's
+`/lib/modules/7.2.0-rc4-g8897487c5223` matches) while the kernel inside the APK
+reports `-dirty`: the rootfs is built for the clean release, and the APK's extra
+suffix can only be reproduced by handing the tree over with those changes
+committed. `kernel/build-vm.sh` and the workflow both compare the release they
+built against that pinned value and say so rather than passing silently.
+
+Note the third row: for `rootless-650` the VM kernel and the UML kernel are the
+**same tree** at the same commit, one built with `ARCH=arm64` and one with
+`ARCH=um`. So a release rebuild wants `TREE` pointed at that tree for both.
+`kernel/build-vm.sh`'s kernel.org tarball fallback (`KVER`, currently 6.18.x) is
+only there for a tree-less run, and it produces a kernel whose release the
+rootfs modules were *not* built for.
+
+### 7.3 The toolchains, as the shipped files state them
+
+| binary | measured `.comment` | implication |
+|---|---|---|
+| `libqemu.so`, `libslirp.so` | `clang version 21.0.0` (`r563880c`) + LLD 21 | built with an **NDK newer than r27** |
+| `libpasst.so`, `libumnet.so` | clang 18.0.0 (`r510928`) and 18.0.3 (`r522817c`) | NDK **r27** series, two compiler revisions mixed |
+| `libuml.so` | NDK note API 30, `r27c`, clang 18.0.3 | NDK **r27c** |
+
+`libqemu.so`/`libslirp.so` are also the only ones whose `LOAD` segments are
+`0x4000` **and** `0x10000`: QEMU's own linker script places a segment at 64 KB
+even when `-z max-page-size` is 16 KB. `tools/build-qemu.sh` passes
+`max-page-size=$PAGE`, so it reproduces the lower bound and lets the compiler
+choose the rest — the check is `>= 16 KB`, not `== 0x4000`, for exactly this
+reason. Building QEMU with the workflow's default `ndk_version=r27c` therefore
+produces a clang-18 libqemu.so where the shipped one says clang 21: same source,
+same flags, different compiler revision. Pass a newer `ndk_version` if a QEMU
+build that matches the released one is wanted; nothing else in the run uses that
+NDK.
+
+### 7.4 The close_range bug, in the shipped bytes
+
+`libpasst.so` defines `close_range` as a 28-byte global function. Its bytes are
+
+```
+  2aac70: d503245f   hint    #0x12
+  2aac74: d2803688   mov     x8, #0x1b4      ; 436 = __NR_close_range
+  2aac78: d4000001   svc     #0
+  2aac7c: b140041f   cmn     w0, #1
+  2aac80: da809400   csinv   x0, x0, xzr, eq
+  2aac84: 54ffcd88   b.hi    <errno path>
+  2aac88: d65f03c0   ret
+```
+
+A raw `svc` on syscall 436 with no `ENOSYS` fallback, which is exactly the
+`passt: SIGSYS on syscall 436` in issue #135. `tools/build-passt.sh` links a
+strong `close_range` ahead of this definition (passt's own one in `linux_dep.h`
+is `__attribute__((weak))` and goes straight to `syscall()`), so the call closes
+by hand and never enters the kernel. The check in that script looks for
+`close_range: emulated by hand` in the artifact, and the workflow repeats it —
+the shipped file does not contain that string, and the rebuilt one must.
+
+### 7.5 The rootfs, opened
+
+`rootless-650/rootfs.imgz` gunzips to an ext4 image (1,606,574,080 bytes,
+sha256 `dfa844f8…`). Read with `debugfs`:
+
+- Debian GNU/Linux 13 (trixie), `DEBIAN_VERSION_FULL=13.6`, hostname `stryker`.
+- `/lib/modules/7.2.0-rc4-g8897487c5223` — one directory, the pinned release.
+- `/etc/shadow` root entry is `!` (locked) and `/etc/ssh/sshd_config` is
+  untouched, so sshd runs on its defaults with
+  `sshd_config.d/10-stryker.conf` layered on top. That file is
+  `images/rootfs/guest/sshd_stryker.conf` **minus its comment block**: key-only
+  login, `AuthorizedKeysFile /root/.ssh/authorized_keys`, `MaxSessions 32`,
+  `Subsystem sftp internal-sftp`, `ClientAliveInterval 15`.
+- No `/root/.ssh` and no `/etc/ssh/ssh_host_*` in the image: the app's public
+  key and the host keys are created at boot, never shipped. The contract is
+  `<share>/.ssh/authorized_keys`, `.ssh/ready` (`ready=1`, `kernel=`, `engine=`),
+  `.ssh/host_keys.pub` and `.ssh/host_fingerprint`, written by
+  `images/rootfs/guest/stryker-guest-init`, which is the shipped
+  `/usr/local/sbin/stryker-guest-init` minus its comment block.
+- `/etc/systemd/system/serial-getty@ttyAMA0.service.d/` **exists and is empty**.
+  The directory was created and the override never written, which is why the
+  QEMU console really was a login prompt that swallowed every command typed at
+  it — the third failure in issue #135. `images/rootfs/build.sh` now writes the
+  `autologin.conf` into that directory.
+- `/stryker-init` is `images/rootfs/guest/stryker-init` minus comments; the
+  repo's copy of `stryker-guest-init` additionally links
+  `/usr/local/sbin/systemctl` to the shim `images/rootfs/guest/systemctl-shim`
+  for the systemd-less UML guest. The shipped image carries neither that link
+  nor `/usr/local/lib/stryker/systemctl`, so a rebuild adds a `systemctl` the
+  released rootfs did not have. That is a deliberate addition, not a
+  reproduction of the release; the rest of the two guest scripts is the shipped
+  text.
+
+### 7.6 What a rebuild reproduces, and what it cannot
+
+Can be reproduced exactly: `libbash.so`, `libumusb.so`, `libqemu.so`,
+`libslirp.so` (given the same QEMU/dependency versions), `libpasst.so` (same
+commit `defc25b`, plus the shim) and `libumnet.so` — same source, same NDK
+series, same flags, same page size, same version strings.
+
+Cannot be byte-identical, and should not be claimed to be: **`libuml.so`**, whose
+shipped build is `-dirty` from a tree we do not have (the release `linux-uml` is
+the clean build of the same commit and *is* reproducible), and **`Image`**, which
+for `rootless-650` is the same tree's `ARCH=arm64` build and is reproducible only
+while `TREE` is the port tree at that commit.
+
+One gap to keep in view: `.github/workflows/binaries.yml` rebuilds and uploads
+QEMU + libslirp (`rootless-main`) and the UML kernel + stub (`rootless-650`), but
+it does **not** rebuild or upload the VM kernel `Image` — the step that verifies
+the Xiaomi/MIUI fix in `images/out/vm/Image` reports it as not built and warns.
+The QEMU engine's USB fix is the host layer in `libqemu.so`, which that run does
+rebuild, so issue #135 is covered; a VM kernel carrying the guest safety net
+comes from `images/build-all.sh`, which builds it.
