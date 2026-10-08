@@ -425,9 +425,17 @@ comes from `images/build-all.sh`, which builds it.
 scripts, the four kernel config fragments, `publish.sh`, `rootfs/audit.sh`, the
 whole of `rootfs/guest/`, `packages.list`, `prune-firmware.sh`, `scrub.sh`,
 `test-uml.sh`, `test-vm.sh` and `tools/build-bash.sh` are **byte-identical**
-here, and `lib/common.sh` is unchanged up to `human()` with everything below it
-added. Those are the parts that were already complete and they were kept as
-they were.
+here. Those are the parts that were already complete and they were kept as they
+were.
+
+Of the seven files that differ, four are purely additive: `lib/common.sh` keeps
+every upstream line (a two-line shellcheck header is all that was put above
+them) and gains the binary checks below `human()`, and `README.md`,
+`tools/build-umusb.sh` and `rootfs/build.sh` likewise only gain lines. The other
+three — `build-all.sh`, `kernel/build-uml.sh`, `kernel/build-vm.sh` — touch a
+handful of existing lines each, and only the ones named here: the step numbers,
+the one `TREE` layout condition, and the fragment list that the 16 KB page file
+was added to. Everything else in them, argument names included, is upstream's.
 
 What upstream does *not* have is a recipe for four of the eight binaries the app
 executes. Its `tools/` holds exactly two scripts:
