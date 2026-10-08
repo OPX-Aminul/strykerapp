@@ -32,8 +32,19 @@ mkdir -p "$OUT_DIR"
 
 run() {
 	local name=$1 script=$2
+	# SKIP_<NAME> by script name: build-umnet.sh is SKIP_UMNET, build-passt.sh is
+	# SKIP_PASST, and so on -- the same names the checks at the end of this file
+	# use. The workflow sets SKIP_UMNET/SKIP_UMUSB when it was not handed the
+	# arm64 UML port tree, and without this the stages ran anyway and died on the
+	# missing tree instead of being skipped.
+	local var
+	var="SKIP_$(printf '%s' "$script" | sed 's/^build-//; s/\.sh$//' | tr 'a-z-' 'A-Z_')"
 	if [ "${SKIP_ALL:-0}" = 1 ]; then
 		warn "$name — skipped (SKIP_ALL=1)"
+		return 0
+	fi
+	if [ "${!var:-0}" = 1 ]; then
+		warn "$name — skipped ($var=1)"
 		return 0
 	fi
 	say "$name"
