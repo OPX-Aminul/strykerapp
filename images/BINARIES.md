@@ -418,3 +418,43 @@ the Xiaomi/MIUI fix in `images/out/vm/Image` reports it as not built and warns.
 The QEMU engine's USB fix is the host layer in `libqemu.so`, which that run does
 rebuild, so issue #135 is covered; a VM kernel carrying the guest safety net
 comes from `images/build-all.sh`, which builds it.
+
+### 7.7 What the upstream `images/` scripts, and what this repo adds
+
+`zalexdev/strykerapp`'s `images/` is the source of this tree — the drivers
+scripts, the four kernel config fragments, `publish.sh`, `rootfs/audit.sh`, the
+whole of `rootfs/guest/`, `packages.list`, `prune-firmware.sh`, `scrub.sh`,
+`test-uml.sh`, `test-vm.sh` and `tools/build-bash.sh` are **byte-identical**
+here, and `lib/common.sh` is unchanged up to `human()` with everything below it
+added. Those are the parts that were already complete and they were kept as
+they were.
+
+What upstream does *not* have is a recipe for four of the eight binaries the app
+executes. Its `tools/` holds exactly two scripts:
+
+| shipped binary | upstream script | here |
+|---|---|---|
+| `libbash.so` | `tools/build-bash.sh` | identical |
+| `libumusb.so` | `tools/build-umusb.sh` | upstream + the Xiaomi/MIUI patch call (+12/−0) |
+| `libuml.so`, `libstub.so` | `kernel/build-uml.sh` | upstream + layout detection, the quirks patch, the port tree's own fragments, the 16 KB page fragment and a marker check (+52/−3) |
+| `Image` | `kernel/build-vm.sh` | upstream + the quirks patch, the pinned-release check and a marker check (+36/−1) |
+| `libpasst.so` | **none** | `tools/build-passt.sh` |
+| `libumnet.so` | **none** | `tools/build-umnet.sh` |
+| `libqemu.so` | **none** | `tools/build-qemu.sh` |
+| `libslirp.so` | **none** | `tools/build-qemu.sh` |
+
+Upstream's `lib/common.sh` is 1,515 bytes and ends at `human()`: it has no way
+to check that a binary is a static aarch64 ET_EXEC with 16 KB pages, no
+interpreter, no build-machine paths and the marker the build meant to put in it.
+All of that (92 added lines) is here, and every script above ends by running it
+on the artifact it just produced. Upstream's `build-all.sh` is four steps and
+never builds the APK-side binaries at all; here it runs `build-binaries.sh`
+first. Upstream's `.github/workflows/` contains only `android.yml` — no
+binaries workflow, no release workflow, and no `images/BINARIES.md`,
+`update-manifest.py`, `usb-quirks.py` or `kernel/config/page16k.config`.
+
+In short: everything upstream had, this tree has, unchanged wherever it was
+complete and extended only where the missing pieces were the ones the reported
+failures came from — passt's `close_range`, QEMU's `usb-host` speed, umusb's
+advertised speed, the 16 KB page fragment the UML kernel needs on an Android 15
+host, and a way to tell that a rebuilt binary is the one that was meant.
