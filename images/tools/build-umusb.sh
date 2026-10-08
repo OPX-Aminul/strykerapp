@@ -52,9 +52,15 @@ say "umusb (USB/IP server, bionic static)"
 info "source  $SRC"
 info "ndk     $NDK (API $API)"
 
+# The leak check below runs on the stripped binary, and stripping removes the
+# debug info but not a __FILE__ that a fortified inline in an NDK header put in
+# .rodata -- so the NDK's sysroot is mapped as well as the tree.
 "$TOOL/clang" --target=aarch64-linux-android$API \
 	-O2 -Wall -Wextra -static \
 	-ffile-prefix-map="$TREE=." \
+	-ffile-prefix-map="$NDK=/ndk" \
+	-ffile-prefix-map="$PWD=." \
+	-fdebug-compilation-dir=. \
 	-Wl,-z,max-page-size="$PAGE" \
 	-o "$O/umusb" "$SRC"
 

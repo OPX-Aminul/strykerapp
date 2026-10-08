@@ -81,7 +81,16 @@ info "commit  $COMMIT"
 # passt's own Makefile: `make passt` links every .c except the pasta/qrap entry
 # points. It wants GNU userspace headers (netlink, seccomp, ethernet, arp), which
 # the NDK ships in its sysroot; if one is missing the compile below names it.
-CFLAGS_EXTRA=(-O2 -fno-strict-aliasing -static -ffile-prefix-map="$SRC=."
+# Three things can put a build-machine path in here: the source tree, the NDK's
+# sysroot headers (every #include lands in the debug line table) and
+# DW_AT_comp_dir, the compiler's working directory. The shipped libpasst.so
+# carries none of them and check_no_build_paths() below requires that, so all
+# three are mapped -- the source tree alone leaves /home/runner/... behind.
+CFLAGS_EXTRA=(-O2 -fno-strict-aliasing -static
+              -ffile-prefix-map="$SRC=."
+              -ffile-prefix-map="$NDK=/ndk"
+              -ffile-prefix-map="$PWD=."
+              -fdebug-compilation-dir=.
               "-Wl,-z,max-page-size=$PAGE")
 if [ "$DEBUG" = 1 ]; then
 	CFLAGS_EXTRA+=(-g -gdwarf-4)

@@ -85,7 +85,17 @@ TOOL=${NDK:-}/toolchains/llvm/prebuilt/linux-x86_64/bin
 
 mkdir -p "$O" "$DEST"
 
-CFLAGS=(-O2 -Wall -Wextra -static -ffile-prefix-map="$TREE=."
+# The shipped libumnet.so carries no build-machine path, and there are three
+# places one can enter a binary this size: the tree the source came from, the
+# NDK's own sysroot headers (every #include in the debug line table), and
+# DW_AT_comp_dir, which is the compiler's working directory. Mapping only the
+# tree leaves /home/runner/... in the NDK paths and the compilation directory,
+# which check_no_build_paths() then (correctly) refuses.
+CFLAGS=(-O2 -Wall -Wextra -static
+        -ffile-prefix-map="$TREE=."
+        -ffile-prefix-map="$NDK=/ndk"
+        -ffile-prefix-map="$PWD=."
+        -fdebug-compilation-dir=.
         "-Wl,-z,max-page-size=$PAGE")
 if [ "$DEBUG" = 1 ]; then
 	CFLAGS+=(-g -gdwarf-4)

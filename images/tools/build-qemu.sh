@@ -69,7 +69,11 @@ CC_WRAP="$TOOL/clang --target=$TARGET"
 # The shipped binary's source paths are /qemu-11.0.2/…, and a build directory
 # under /home would otherwise be embedded in every __FILE__ string.
 MAP_COMMON=(-fPIC -O2 -fno-strict-aliasing -fno-omit-frame-pointer
-            -ffile-prefix-map="$SRCS=." "-Wl,-z,max-page-size=$PAGE")
+            -ffile-prefix-map="$SRCS=."
+            -ffile-prefix-map="$NDK=/ndk"
+            -ffile-prefix-map="$PWD=."
+            -fdebug-compilation-dir=.
+            "-Wl,-z,max-page-size=$PAGE")
 
 say "qemu $QEMU_VER + libslirp $SLIRP_VER for android-$API (page $PAGE)"
 info "ndk     $NDK"
@@ -274,7 +278,7 @@ cpu = 'aarch64'
 endian = 'little'
 
 [built-in options]
-c_args = ['--target=$TARGET', '${MAP_COMMON[0]}', '-fno-strict-aliasing', '-ffile-prefix-map=$SRCS=.', '-I$PREFIX/include']
+c_args = ['--target=$TARGET', '${MAP_COMMON[0]}', '-fno-strict-aliasing', '-ffile-prefix-map=$SRCS=.', '-ffile-prefix-map=$NDK=/ndk', '-ffile-prefix-map=$PWD=.', '-fdebug-compilation-dir=.', '-I$PREFIX/include']
 c_link_args = ['--target=$TARGET', '-L$PREFIX/lib', '-Wl,-z,max-page-size=$PAGE']
 EOF
 

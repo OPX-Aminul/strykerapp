@@ -143,7 +143,11 @@ check_load_align() {
 check_no_build_paths() {
 	local leak
 	leak=$(grep -a -o -E '/(home|root|Users)/[A-Za-z0-9._-]+' "$1" | sort -u || true)
-	[ -z "$leak" ] || die "$(basename "$1") carries build-machine paths:\n$leak"
+	# A real newline, not \n: die() prints its argument verbatim, so an escaped
+	# \n arrives in the CI log as a literal backslash-n and the list of leaked
+	# paths (the only thing that says what to map) is unreadable.
+	[ -z "$leak" ] || die "$(basename "$1") carries build-machine paths:
+$leak"
 }
 
 check_marker() {
